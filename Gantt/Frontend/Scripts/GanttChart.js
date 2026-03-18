@@ -227,7 +227,7 @@
       this.ui.emptyState.hidden = rows.length > 0;
       this.ui.errorState.hidden = true;
       if (!rows.length) {
-        this.ui.labelScroll.innerHTML = '';
+        this.ui.labelPane.innerHTML = '';
         this.ui.timelineHead.innerHTML = '';
         this.ui.gridCanvas.innerHTML = '<svg class="lve-dependency-layer"></svg>';
         return;
@@ -244,235 +244,7 @@
       this.renderMiniMap();
       this.renderDirtyState();
     }
-
-    indexBars(bars) {
-      this.barMapByRow.clear();
-      this.barByDependencyKey.clear();
-      this.barById.clear();
-      bars.forEach((bar) => {
-        if (!this.barMapByRow.has(bar.rowId)) this.barMapByRow.set(bar.rowId, []);
-        this.barMapByRow.get(bar.rowId).push(bar);
-        if (bar.dependencyKey) this.barByDependencyKey.set(bar.dependencyKey, bar);
-        this.barById.set(bar.barId, bar);
-      });
-    }
-
-    startOfWeek(date) {
-      const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
-      const day = start.getDay();
-      const offset = day === 0 ? -6 : 1 - day;
-      start.setDate(start.getDate() + offset);
-      return start;
-    }
-
-    endOfWeek(date) {
-      const end = this.startOfWeek(date);
-      end.setDate(end.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
-      return end;
-    }
-
-    getWeekNumber(date) {
-      const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      const dayNumber = target.getUTCDay() || 7;
-      target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
-      const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
-      return Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
-    }
-
-    computeTimeline() {
-      const rangeStart = toDate(this.payload.rangeStart) || new Date();
-      const rangeEnd = toDate(this.payload.rangeEnd) || new Date(Date.now() + 14 * 24 * 3600 * 1000);
-      const selectedGrain = this.normalizeTimeGrain(this.timeGrain);
-      const useHourly = selectedGrain === 'Day' && this.zoom >= 220;
-      const baseWidth = 30 * (this.zoom / 100);
-
-      this.effectiveTimeGrain = useHourly ? 'Hour' : selectedGrain;
-      this.timelineCols = [];
-
-      if (this.effectiveTimeGrain === 'Hour') {
-        this.timelineStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate(), 0, 0, 0, 0);
-        this.timelineEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59, 999);
-        const cursor = new Date(this.timelineStart);
-        const colWidth = Math.max(18, baseWidth * 0.6);
-        while (cursor <= this.timelineEnd) {
-          const next = new Date(cursor.getTime() + 3600 * 1000);
-          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'hour' });
-          cursor.setHours(cursor.getHours() + 1);
-        }
-      } else if (this.effectiveTimeGrain === 'Week') {
-        this.timelineStart = this.startOfWeek(rangeStart);
-        this.timelineEnd = this.endOfWeek(rangeEnd);
-        const cursor = new Date(this.timelineStart);
-        const colWidth = Math.max(48, 64 * (this.zoom / 100));
-        while (cursor <= this.timelineEnd) {
-          const next = new Date(cursor);
-          next.setDate(next.getDate() + 7);
-          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'week' });
-          cursor.setDate(cursor.getDate() + 7);
-        }
-      } else if (this.effectiveTimeGrain === 'Month') {
-        this.timelineStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1, 0, 0, 0, 0);
-        this.timelineEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth() + 1, 0, 23, 59, 59, 999);
-        const cursor = new Date(this.timelineStart);
-        const colWidth = Math.max(56, 82 * (this.zoom / 100));
-        while (cursor <= this.timelineEnd) {
-          const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1, 0, 0, 0, 0);
-          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'month' });
-          cursor.setMonth(cursor.getMonth() + 1);
-          cursor.setDate(1);
-        }
-      } else if (this.effectiveTimeGrain === 'Year') {
-        this.timelineStart = new Date(rangeStart.getFullYear(), 0, 1, 0, 0, 0, 0);
-        this.timelineEnd = new Date(rangeEnd.getFullYear(), 11, 31, 23, 59, 59, 999);
-        const cursor = new Date(this.timelineStart);
-        const colWidth = Math.max(88, 120 * (this.zoom / 100));
-        while (cursor <= this.timelineEnd) {
-          const next = new Date(cursor.getFullYear() + 1, 0, 1, 0, 0, 0, 0);
-          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'year' });
-          cursor.setFullYear(cursor.getFullYear() + 1, 0, 1);
-        }
-      } else {
-        this.timelineStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate(), 0, 0, 0, 0);
-        this.timelineEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59, 999);
-        const cursor = new Date(this.timelineStart);
-        const colWidth = Math.max(22, baseWidth);
-        while (cursor <= this.timelineEnd) {
-          const next = new Date(cursor.getTime() + 24 * 3600 * 1000);
-          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'day' });
-          cursor.setDate(cursor.getDate() + 1);
-        }
-      }
-
-      this.totalTimelineWidth = this.timelineCols.reduce((sum, col) => sum + col.width, 0);
-    }
-
-    computeVisibleRows(allRows) {
-      const childrenByParent = new Map();
-      allRows.forEach((row) => {
-        const key = row.parentRowId || 'ROOT';
-        if (!childrenByParent.has(key)) childrenByParent.set(key, []);
-        childrenByParent.get(key).push(row);
-      });
-
-      const sortRows = (arr) => arr.sort((a, b) => String(a.sequenceValue || '').localeCompare(String(b.sequenceValue || '')) || String(a.keyText || '').localeCompare(String(b.keyText || '')));
-      childrenByParent.forEach((arr) => sortRows(arr));
-
-      const result = [];
-      const walk = (parentId) => {
-        const children = childrenByParent.get(parentId) || [];
-        children.forEach((row) => {
-          result.push(row);
-          const expanded = this.expandedRows.has(row.rowId) || row.isExpanded;
-          if (expanded) walk(row.rowId);
-        });
-      };
-      walk('ROOT');
-      this.visibleRows = result;
-      this.rowIndexById.clear();
-      this.visibleRows.forEach((row, index) => this.rowIndexById.set(row.rowId, index));
-    }
-
-    buildDerivedCaches() {
-      this.mappingLineMetaByNo.clear();
-      (this.payload.mappingLines || []).forEach((line) => {
-        this.mappingLineMetaByNo.set(line.lineNo, line);
-      });
-      this.precomputeConflicts();
-    }
-
-    precomputeConflicts() {
-      this.conflictingBarIds.clear();
-      this.rowsWithConflict.clear();
-
-      const groups = new Map();
-      this.barById.forEach((bar) => {
-        if (!bar.conflictGroupKey) return;
-        if (!groups.has(bar.conflictGroupKey)) groups.set(bar.conflictGroupKey, []);
-        groups.get(bar.conflictGroupKey).push(bar);
-      });
-
-      groups.forEach((bars) => {
-        const sortedBars = bars
-          .map((bar) => ({
-            bar,
-            startMs: +(toDate(bar.start) || 0),
-            endMs: +(toDate(bar.end) || 0)
-          }))
-          .filter((entry) => entry.startMs && entry.endMs)
-          .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
-
-        const active = [];
-        sortedBars.forEach((entry) => {
-          for (let i = active.length - 1; i >= 0; i -= 1) {
-            if (active[i].endMs <= entry.startMs) active.splice(i, 1);
-          }
-
-          if (active.length) {
-            this.conflictingBarIds.add(entry.bar.barId);
-            this.rowsWithConflict.add(entry.bar.rowId);
-            active.forEach((activeEntry) => {
-              this.conflictingBarIds.add(activeEntry.bar.barId);
-              this.rowsWithConflict.add(activeEntry.bar.rowId);
-            });
-          }
-
-          active.push(entry);
-        });
-      });
-    }
-
-    getViewportRowRange() {
-      const totalRows = this.visibleRows.length;
-      if (!totalRows) return { start: 0, end: 0 };
-
-      const scrollTop = this.ui.scrollBody.scrollTop || 0;
-      const viewportHeight = this.ui.scrollBody.clientHeight || this.root.clientHeight || 600;
-      const start = clamp(Math.floor(scrollTop / this.rowHeight) - this.rowOverscan, 0, totalRows);
-      const end = clamp(Math.ceil((scrollTop + viewportHeight) / this.rowHeight) + this.rowOverscan, 0, totalRows);
-      return { start, end: Math.max(start, end) };
-    }
-
-    getTopBandMeta(col) {
-      if (col.type === 'hour' || col.type === 'day') {
-        return {
-          key: `${col.start.getFullYear()}-${col.start.getMonth()}`,
-          label: col.start.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-        };
-      }
-      if (col.type === 'week' || col.type === 'month') {
-        return {
-          key: `${col.start.getFullYear()}`,
-          label: String(col.start.getFullYear())
-        };
-      }
-      const decadeStart = Math.floor(col.start.getFullYear() / 10) * 10;
-      return {
-        key: `${decadeStart}`,
-        label: `${decadeStart}s`
-      };
-    }
-
-    getBottomBandLabel(col) {
-      if (col.type === 'hour') return `${String(col.start.getHours()).padStart(2, '0')}:00`;
-      if (col.type === 'day') return `${col.start.getDate()}`;
-      if (col.type === 'week') return `W${String(this.getWeekNumber(col.start)).padStart(2, '0')}`;
-      if (col.type === 'month') return col.start.toLocaleDateString(undefined, { month: 'short' });
-      return String(col.start.getFullYear());
-    }
-
-    isWeekendColumn(col) {
-      return col.type === 'day' && (col.start.getDay() === 0 || col.start.getDay() === 6);
-    }
-
-    isPrimaryBoundary(col) {
-      if (col.type === 'hour') return col.start.getHours() === 0;
-      if (col.type === 'day') return col.start.getDate() === 1;
-      if (col.type === 'week') return col.start.getMonth() !== col.end.getMonth();
-      if (col.type === 'month') return col.start.getMonth() === 0;
-      return col.start.getFullYear() % 10 === 0;
-    }
-
+...
     renderTimelineHeader() {
       const topBand = document.createElement('div');
       topBand.className = 'lve-timeline-months';
@@ -506,21 +278,18 @@
       this.ui.timelineHead.innerHTML = '';
       this.ui.timelineHead.appendChild(topBand);
       this.ui.timelineHead.appendChild(bottomBand);
-
-      const headerHeight = this.ui.timelineHead.offsetHeight || 52;
-      this.ui.labelHead.style.height = `${headerHeight}px`;
     }
 
     renderRowsAndGrid() {
       this.viewportWidth = this.totalTimelineWidth;
       this.totalContentHeight = this.visibleRows.length * this.rowHeight;
 
-      this.ui.labelScroll.innerHTML = '';
+      this.ui.labelPane.innerHTML = '';
       const labelSurface = document.createElement('div');
       labelSurface.style.position = 'relative';
       labelSurface.style.height = `${this.totalContentHeight}px`;
       labelSurface.style.minHeight = `${this.totalContentHeight}px`;
-      this.ui.labelScroll.appendChild(labelSurface);
+      this.ui.labelPane.appendChild(labelSurface);
       this.ui.labelSurface = labelSurface;
 
       this.ui.gridCanvas.innerHTML = '';
@@ -599,8 +368,6 @@
       todayLine.className = 'today-line';
       todayLine.style.left = `${todayX}px`;
       bg.appendChild(todayLine);
-
-      this.syncVerticalScroll(this.ui.scrollBody.scrollTop || 0);
     }
 
     renderViewport() {
