@@ -1,0 +1,215 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="Header">
+      <Font ss:Bold="1"/>
+      <Interior ss:Color="#D9E1F2" ss:Pattern="Solid"/>
+    </Style>
+  </Styles>
+
+  <Worksheet ss:Name="Setup">
+    <Table>
+      <Row>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Name</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Description</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Default View Code</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Active</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Default Zoom %</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Default Time Grain</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Allow Edit</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Allow Save</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Enable Dependencies</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Enable Aggregation</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Enable Conflict Detection</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Enable View Switching</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Highest Parent Card Page ID</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="Number">5405</Data></Cell>
+        <Cell><Data ss:Type="String">Production Order Gantt</Data></Cell>
+        <Cell><Data ss:Type="String">Production Order &gt; Line &gt; Routing visualization</Data></Cell>
+        <Cell><Data ss:Type="String">MAIN</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="Number">100</Data></Cell>
+        <Cell><Data ss:Type="String">Day</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String">FALSE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+      </Row>
+    </Table>
+  </Worksheet>
+
+  <Worksheet ss:Name="Views">
+    <Table>
+      <Row>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Setup ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">View Code</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Name</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Sequence</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Is Default</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Root Mapping Line No.</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Aggregation Enabled</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Dependency Enabled</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Conflict Detection Enabled</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="Number">5405</Data></Cell>
+        <Cell><Data ss:Type="String">MAIN</Data></Cell>
+        <Cell><Data ss:Type="String">Production</Data></Cell>
+        <Cell><Data ss:Type="Number">1</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="Number">10000</Data></Cell>
+        <Cell><Data ss:Type="String">FALSE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+      </Row>
+    </Table>
+  </Worksheet>
+
+  <Worksheet ss:Name="MappingLines">
+    <Table>
+      <Row>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Setup ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">View Code</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Line No.</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Source Table ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Parent Line No.</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Relation Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Key Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Description Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Start Date Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">End Date Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Due Date Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Status Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Sequence Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Is Expandable</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Is Editable</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Card Page ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Context Identity Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Dependency Source Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Dependency Target Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Dependency Type Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Conflict Group Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Progress Override Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Tooltip Title Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Notes</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="Number">5405</Data></Cell>
+        <Cell><Data ss:Type="String">MAIN</Data></Cell>
+        <Cell><Data ss:Type="Number">10000</Data></Cell>
+        <Cell><Data ss:Type="Number">5405</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">No.</Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Starting Date</Data></Cell>
+        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
+        <Cell><Data ss:Type="String">Due Date</Data></Cell>
+        <Cell><Data ss:Type="String">Status</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String">FALSE</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">No.</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Production Order (root)</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="Number">5405</Data></Cell>
+        <Cell><Data ss:Type="String">MAIN</Data></Cell>
+        <Cell><Data ss:Type="Number">20000</Data></Cell>
+        <Cell><Data ss:Type="Number">5406</Data></Cell>
+        <Cell><Data ss:Type="Number">10000</Data></Cell>
+        <Cell><Data ss:Type="String">Prod. Order No.</Data></Cell>
+        <Cell><Data ss:Type="String">Line No.</Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Starting Date</Data></Cell>
+        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
+        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
+        <Cell><Data ss:Type="String">Status</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">Line No.</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Prod. Order Line (child of 5405)</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="Number">5405</Data></Cell>
+        <Cell><Data ss:Type="String">MAIN</Data></Cell>
+        <Cell><Data ss:Type="Number">30000</Data></Cell>
+        <Cell><Data ss:Type="Number">5409</Data></Cell>
+        <Cell><Data ss:Type="Number">20000</Data></Cell>
+        <Cell><Data ss:Type="String">Prod. Order Line No.</Data></Cell>
+        <Cell><Data ss:Type="String">Operation No.</Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Starting Date</Data></Cell>
+        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">Status</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">FALSE</Data></Cell>
+        <Cell><Data ss:Type="String">TRUE</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">Operation No.</Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Prod. Order Routing Line (child of 5406)</Data></Cell>
+      </Row>
+    </Table>
+  </Worksheet>
+
+  <Worksheet ss:Name="DetailLines">
+    <Table>
+      <Row>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Setup ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">View Code</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Mapping Line No.</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Line No.</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Field ID</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Caption Override</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Sequence</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">Is Visible</Data></Cell>
+      </Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="String">No.</Data></Cell><Cell><Data ss:Type="String">Order No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="String">Due Date</Data></Cell><Cell><Data ss:Type="String">Due Date</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="String">Line No.</Data></Cell><Cell><Data ss:Type="String">Line No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="String">Item No.</Data></Cell><Cell><Data ss:Type="String">Item No.</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="String">Quantity</Data></Cell><Cell><Data ss:Type="String">Quantity</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">50000</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">50</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="String">Operation No.</Data></Cell><Cell><Data ss:Type="String">Operation No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="String">Operation Description</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="String">Work Center No.</Data></Cell><Cell><Data ss:Type="String">Work Center</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+    </Table>
+  </Worksheet>
+</Workbook>
