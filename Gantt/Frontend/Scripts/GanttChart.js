@@ -244,7 +244,7 @@
       this.renderMiniMap();
       this.renderDirtyState();
     }
-...
+
     renderTimelineHeader() {
       const topBand = document.createElement('div');
       topBand.className = 'lve-timeline-months';
