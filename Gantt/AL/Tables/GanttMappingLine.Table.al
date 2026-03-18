@@ -144,10 +144,17 @@ table 71891722 "DGOG Gantt Mapping Line"
         }
         field(23; "Dependency Target Field ID"; Integer)
         {
-            Caption = 'Dependency Target Field ID';
+            Caption = 'Dependency Group Field ID';
             DataClassification = CustomerContent;
             TableRelation = Field."No." where(TableNo = field("Source Table ID"));
-            ToolTip = 'Specifies the field that contains the related task key. The arrow is always rendered from the smaller key value to the bigger key value.';
+            ToolTip = 'Specifies Field A, which groups child elements for dependency generation even when they are not under the same parent.';
+        }
+        field(24; "Dependency Order Field ID"; Integer)
+        {
+            Caption = 'Dependency Order Field ID';
+            DataClassification = CustomerContent;
+            TableRelation = Field."No." where(TableNo = field("Source Table ID"));
+            ToolTip = 'Specifies Field B, which orders dependencies inside the same dependency group. Each row connects only to the immediate next higher unique value.';
         }
         field(25; "Aggregation Value Field ID"; Integer)
         {
