@@ -204,9 +204,11 @@
       this.ui.timegrainGroup.addEventListener('click', (event) => {
         const button = event.target.closest('[data-grain]');
         if (!button) return;
+        const centerDate = this.getViewportCenterDate();
         this.timeGrain = this.normalizeTimeGrain(button.getAttribute('data-grain'));
         this.syncTimegrainButtons();
         this.render();
+        this.restoreViewportCenter(centerDate);
         this.log('View', 'info', 'Time grain changed', { timeGrain: this.timeGrain });
       });
 
@@ -224,6 +226,16 @@
         this.scheduleViewportRender();
         this.syncMiniMapViewport();
       });
+
+      this.ui.scrollBody.addEventListener(
+        'wheel',
+        (event) => {
+          if (!event.ctrlKey) return;
+          event.preventDefault();
+          this.setZoom(this.zoom + (event.deltaY < 0 ? 10 : -10));
+        },
+        { passive: false }
+      );
 
       this.root.addEventListener('mousemove', (event) => this.onPointerMove(event));
       this.root.addEventListener('mouseup', () => this.finishDrag());
@@ -263,16 +275,37 @@
           return 'Month';
         case 'year':
           return 'Year';
+        case 'hour':
+          return 'Hour';
         default:
           return 'Day';
       }
     }
 
     setZoom(value) {
+      const centerDate = this.getViewportCenterDate();
       this.zoom = clamp(Math.round(value / 10) * 10, 30, 400);
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
       this.render();
-      this.log('View', 'info', 'Zoom changed', { zoom: this.zoom, grain: this.timeGrain });
+      this.restoreViewportCenter(centerDate);
+      this.log('View', 'info', 'Zoom changed', { zoom: this.zoom, grain: this.timeGrain, effectiveGrain: this.effectiveTimeGrain });
+    }
+
+    getViewportCenterDate() {
+      const body = this.ui.scrollBody;
+      if (!body || !this.timelineStart || !this.timelineEnd || this.totalTimelineWidth <= 0) return null;
+      return this.xToDate(body.scrollLeft + body.clientWidth / 2);
+    }
+
+    restoreViewportCenter(centerDate) {
+      const body = this.ui.scrollBody;
+      if (!body || !centerDate || !this.timelineStart || !this.timelineEnd) return;
+      const desiredScrollLeft = this.dateToX(centerDate) - body.clientWidth / 2;
+      body.scrollLeft = clamp(desiredScrollLeft, 0, Math.max(0, this.totalTimelineWidth - body.clientWidth));
+      this.lastScrollLeft = body.scrollLeft;
+      this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+      this.syncLabelViewport();
+      this.syncMiniMapViewport();
     }
 
     setBusy(caption, isBusy) {
@@ -496,7 +529,7 @@
         rangeEnd = addDays(today, 30);
       }
 
-      this.effectiveTimeGrain = this.normalizeTimeGrain(this.timeGrain);
+      this.effectiveTimeGrain = this.resolveEffectiveTimeGrain(bars);
       const alignedStart = this.alignDateToGrain(rangeStart, this.effectiveTimeGrain);
       let cursor = new Date(alignedStart.getTime());
       const alignedEnd = this.advanceDateByGrain(rangeEnd, this.effectiveTimeGrain, 1);
@@ -506,25 +539,45 @@
       while (cursor < alignedEnd) {
         const next = this.advanceDateByGrain(cursor, this.effectiveTimeGrain, 1);
         const width = this.getColumnWidth(this.effectiveTimeGrain);
-        columns.push({ start: new Date(cursor.getTime()), end: new Date(next.getTime()), width });
+        columns.push({ start: new Date(cursor.getTime()), end: new Date(next.getTime()), width, x: totalWidth });
         totalWidth += width;
         cursor = next;
       }
 
-      this.timelineCols = columns;
-      this.timelineStart = alignedStart;
-      this.timelineEnd = alignedEnd;
       const visibleWidth = Math.max(320, this.ui.scrollBody?.clientWidth || 0);
       this.totalTimelineWidth = Math.max(totalWidth, visibleWidth);
-      if (columns.length && totalWidth !== this.totalTimelineWidth) {
-        const scale = this.totalTimelineWidth / totalWidth;
-        this.timelineCols = columns.map((col) => ({ ...col, width: col.width * scale }));
+      const scale = totalWidth > 0 ? this.totalTimelineWidth / totalWidth : 1;
+      let offset = 0;
+      this.timelineCols = columns.map((col) => {
+        const scaledCol = { ...col, width: col.width * scale, x: offset };
+        offset += scaledCol.width;
+        return scaledCol;
+      });
+      this.timelineStart = alignedStart;
+      this.timelineEnd = alignedEnd;
+    }
+
+    resolveEffectiveTimeGrain(bars) {
+      const requested = this.normalizeTimeGrain(this.timeGrain);
+      if (requested === 'Day' && this.zoom >= 220 && this.hasSubDayPrecision(bars)) {
+        return 'Hour';
       }
+      return requested;
+    }
+
+    hasSubDayPrecision(bars) {
+      return (bars || []).some((bar) => {
+        const start = toDate(bar.start);
+        const end = toDate(bar.end);
+        return [start, end].some((date) => date && (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0));
+      });
     }
 
     getColumnWidth(grain) {
       const zoomFactor = this.zoom / 100;
       switch (grain) {
+        case 'Hour':
+          return 16 * zoomFactor;
         case 'Week':
           return 96 * zoomFactor;
         case 'Month':
@@ -539,6 +592,8 @@
 
     alignDateToGrain(date, grain) {
       switch (grain) {
+        case 'Hour':
+          return new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), 0, 0, 0);
         case 'Week':
           return startOfWeek(date);
         case 'Month':
@@ -553,6 +608,8 @@
 
     advanceDateByGrain(date, grain, amount) {
       switch (grain) {
+        case 'Hour':
+          return new Date(this.alignDateToGrain(date, 'Hour').getTime() + amount * 3600 * 1000);
         case 'Week':
           return addDays(startOfWeek(date), amount * 7);
         case 'Month':
@@ -568,6 +625,11 @@
     getTopBandMeta(col) {
       const date = col.start;
       switch (this.effectiveTimeGrain) {
+        case 'Hour':
+          return {
+            key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
+            label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+          };
         case 'Week':
         case 'Day':
           return {
@@ -591,6 +653,8 @@
     getBottomBandLabel(col) {
       const date = col.start;
       switch (this.effectiveTimeGrain) {
+        case 'Hour':
+          return `${String(date.getHours()).padStart(2, '0')}:00`;
         case 'Week':
           return `W${getIsoWeek(date)}`;
         case 'Month':
@@ -604,7 +668,7 @@
     }
 
     isWeekendColumn(col) {
-      if (this.effectiveTimeGrain !== 'Day') return false;
+      if (!['Day', 'Hour'].includes(this.effectiveTimeGrain)) return false;
       const day = col.start.getDay();
       return day === 0 || day === 6;
     }
@@ -612,6 +676,8 @@
     isPrimaryBoundary(col) {
       const date = col.start;
       switch (this.effectiveTimeGrain) {
+        case 'Hour':
+          return date.getHours() === 0;
         case 'Week':
         case 'Day':
           return date.getDate() === 1;
@@ -628,6 +694,7 @@
       topBand.className = 'lve-timeline-months';
       const bottomBand = document.createElement('div');
       bottomBand.className = 'lve-timeline-days';
+      bottomBand.setAttribute('data-grain', this.effectiveTimeGrain.toLowerCase());
 
       let currentGroupKey = '';
       let topCell = null;
@@ -649,6 +716,7 @@
         cell.style.minWidth = `${col.width}px`;
         cell.style.maxWidth = `${col.width}px`;
         cell.textContent = this.getBottomBandLabel(col);
+        cell.title = `${col.start.toLocaleString()} – ${col.end.toLocaleString()}`;
         bottomBand.appendChild(cell);
       });
 
@@ -740,7 +808,7 @@
       const todayStart = startOfDay(today);
 
       this.timelineCols.forEach((col) => {
-        const x = this.dateToX(col.start);
+        const x = col.x;
         const line = document.createElement('div');
         line.className = 'vline';
         if (this.isPrimaryBoundary(col)) line.classList.add('month-boundary');
@@ -876,8 +944,9 @@
           const xStart = this.dateToX(start);
           const xEnd = this.dateToX(end);
           const width = Math.max(6, xEnd - xStart);
-          const top = rowIndex * this.rowHeight + (bar.depth > 0 ? 11 : 8);
-          const height = bar.depth > 0 ? 12 : 18;
+          const isChild = (bar.depth || 0) > 0 || (row.level || 0) > 0;
+          const top = rowIndex * this.rowHeight + (isChild ? 10 : 8);
+          const height = isChild ? 16 : 20;
 
           const barEl = document.createElement('div');
           barEl.className = 'lve-bar';
@@ -889,7 +958,7 @@
           barEl.style.top = `${top}px`;
           barEl.style.width = `${width}px`;
           barEl.style.height = `${height}px`;
-          barEl.style.background = bar.color || '#3AAB5C';
+          barEl.style.background = isChild ? this.tintColor(bar.color || '#3AAB5C', 0.16) : (bar.color || '#3AAB5C');
 
           const progress = document.createElement('div');
           progress.className = 'lve-bar-progress';
@@ -899,7 +968,8 @@
 
           const label = document.createElement('span');
           label.className = 'lve-bar-label';
-          label.textContent = width > 66 ? (bar.label || '') : '';
+          label.style.lineHeight = `${height}px`;
+          label.textContent = width > (isChild ? 46 : 66) ? (bar.label || '') : '';
           barEl.appendChild(label);
 
           const due = toDate(bar.due);
@@ -922,6 +992,16 @@
       }
 
       this.ui.gridBarLayer.appendChild(fragment);
+    }
+
+    tintColor(color, amount) {
+      const hex = String(color || '').trim();
+      if (!/^#([0-9a-f]{6})$/i.test(hex)) return color;
+      const normalize = (value) => clamp(Math.round(value + (255 - value) * amount), 0, 255);
+      const r = normalize(parseInt(hex.slice(1, 3), 16));
+      const g = normalize(parseInt(hex.slice(3, 5), 16));
+      const b = normalize(parseInt(hex.slice(5, 7), 16));
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
     renderDependencies(startIndex, endIndex) {
@@ -1008,6 +1088,7 @@
       if (localX < edgeThreshold) mode = 'resize-left';
       else if (localX > rect.width - edgeThreshold) mode = 'resize-right';
 
+      event.currentTarget.classList.add('is-drag-source');
       this.dragState = {
         mode,
         bar,
@@ -1017,16 +1098,18 @@
         originalEnd: toDate(bar.end),
         originalXStart: xStart,
         originalXEnd: xEnd,
+        sourceElement: event.currentTarget,
         ghost: null
       };
 
       const rowIndex = this.rowIndexById.get(row.rowId) || 0;
+      const isChild = (bar.depth || 0) > 0 || (row.level || 0) > 0;
       const ghost = document.createElement('div');
       ghost.className = 'lve-bar-ghost';
       ghost.style.left = `${xStart}px`;
-      ghost.style.top = `${rowIndex * this.rowHeight + (bar.depth > 0 ? 11 : 8)}px`;
+      ghost.style.top = `${rowIndex * this.rowHeight + (isChild ? 10 : 8)}px`;
       ghost.style.width = `${Math.max(6, xEnd - xStart)}px`;
-      ghost.style.height = `${bar.depth > 0 ? 12 : 18}px`;
+      ghost.style.height = `${isChild ? 16 : 20}px`;
       this.ui.gridBarLayer.appendChild(ghost);
       this.dragState.ghost = ghost;
       this.log('Interaction', 'info', 'Drag start', { barId: bar.barId, mode });
@@ -1036,9 +1119,11 @@
     onPointerMove(event) {
       if (!this.dragState) return;
       const deltaPx = event.clientX - this.dragState.startClientX;
-      const msPerPx = this.millisecondsPerPixel();
-      const deltaMs = deltaPx * msPerPx;
-      const { mode, originalStart, originalEnd, ghost } = this.dragState;
+      const { mode, originalStart, originalEnd, ghost, originalXStart, originalXEnd } = this.dragState;
+      const anchorDate = mode === 'resize-right' ? originalEnd : originalStart;
+      const anchorX = mode === 'resize-right' ? originalXEnd : originalXStart;
+      const shiftedDate = this.xToDate(anchorX + deltaPx) || anchorDate;
+      const deltaMs = shiftedDate.getTime() - anchorDate.getTime();
       let newStart = new Date(originalStart.getTime());
       let newEnd = new Date(originalEnd.getTime());
 
@@ -1064,6 +1149,7 @@
     finishDrag() {
       if (!this.dragState) return;
       const state = this.dragState;
+      if (state.sourceElement) state.sourceElement.classList.remove('is-drag-source');
       if (state.ghost) state.ghost.remove();
       this.dragState = null;
       if (!state.newStart || !state.newEnd) return;
@@ -1193,11 +1279,36 @@
     }
 
     dateToX(dateObj) {
-      if (!dateObj || !this.timelineStart || !this.timelineEnd) return 0;
-      const startMs = this.timelineStart.getTime();
-      const endMs = this.timelineEnd.getTime();
-      const ratio = (dateObj.getTime() - startMs) / Math.max(1, endMs - startMs);
-      return ratio * this.totalTimelineWidth;
+      if (!dateObj || !this.timelineCols.length) return 0;
+      const time = dateObj.getTime();
+      if (time <= this.timelineCols[0].start.getTime()) return 0;
+      const lastCol = this.timelineCols[this.timelineCols.length - 1];
+      if (time >= lastCol.end.getTime()) return this.totalTimelineWidth;
+
+      for (let index = 0; index < this.timelineCols.length; index += 1) {
+        const col = this.timelineCols[index];
+        const start = col.start.getTime();
+        const end = col.end.getTime();
+        if (time < end || index === this.timelineCols.length - 1) {
+          const ratio = clamp((time - start) / Math.max(1, end - start), 0, 1);
+          return col.x + ratio * col.width;
+        }
+      }
+
+      return this.totalTimelineWidth;
+    }
+
+    xToDate(x) {
+      if (!this.timelineCols.length) return null;
+      const clampedX = clamp(x, 0, this.totalTimelineWidth);
+      for (let index = 0; index < this.timelineCols.length; index += 1) {
+        const col = this.timelineCols[index];
+        if (clampedX <= col.x + col.width || index === this.timelineCols.length - 1) {
+          const ratio = clamp((clampedX - col.x) / Math.max(col.width, 1), 0, 1);
+          return new Date(col.start.getTime() + (col.end.getTime() - col.start.getTime()) * ratio);
+        }
+      }
+      return new Date(this.timelineEnd.getTime());
     }
 
     millisecondsPerPixel() {
@@ -1206,7 +1317,7 @@
     }
 
     minimumBarMs() {
-      return this.zoom >= 220 ? 3600 * 1000 : 24 * 3600 * 1000;
+      return this.effectiveTimeGrain === 'Hour' ? 3600 * 1000 : 24 * 3600 * 1000;
     }
   }
 
