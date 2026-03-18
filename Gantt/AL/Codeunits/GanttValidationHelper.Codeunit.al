@@ -320,22 +320,22 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
             FieldMeta.Type::Date:
                 begin
                     Clear(DateValue);
-                    if NewValueText <> '' then
-                        Evaluate(DateValue, NewValueText);
+                    if (NewValueText <> '') and (not TryParseDateValue(NewValueText, DateValue)) then
+                        Error('The value %1 is not a valid date for field %2 on table %3.', NewValueText, FieldId, SourceRef.Number);
                     TargetField.Validate(DateValue);
                 end;
             FieldMeta.Type::DateTime:
                 begin
                     Clear(DateTimeValue);
-                    if NewValueText <> '' then
-                        Evaluate(DateTimeValue, NewValueText);
+                    if (NewValueText <> '') and (not TryParseDateTimeValue(NewValueText, DateTimeValue)) then
+                        Error('The value %1 is not a valid date/time for field %2 on table %3.', NewValueText, FieldId, SourceRef.Number);
                     TargetField.Validate(DateTimeValue);
                 end;
             FieldMeta.Type::Time:
                 begin
                     Clear(TimeValue);
-                    if NewValueText <> '' then
-                        Evaluate(TimeValue, NewValueText);
+                    if (NewValueText <> '') and (not TryParseTimeValue(NewValueText, TimeValue)) then
+                        Error('The value %1 is not a valid time for field %2 on table %3.', NewValueText, FieldId, SourceRef.Number);
                     TargetField.Validate(TimeValue);
                 end;
             FieldMeta.Type::Decimal:
@@ -369,6 +369,110 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
             else
                 TargetField.Validate(NewValueText);
         end;
+    end;
+
+    local procedure TryParseDateValue(InputText: Text; var DateValue: Date): Boolean
+    var
+        ParsedDateTime: DateTime;
+    begin
+        if Evaluate(DateValue, InputText) then
+            exit(true);
+        if TryParseIsoDateValue(InputText, DateValue) then
+            exit(true);
+        if TryParseDateTimeValue(InputText, ParsedDateTime) then begin
+            DateValue := DT2Date(ParsedDateTime);
+            exit(true);
+        end;
+        exit(false);
+    end;
+
+    local procedure TryParseDateTimeValue(InputText: Text; var DateTimeValue: DateTime): Boolean
+    var
+        ParsedDate: Date;
+        ParsedTime: Time;
+    begin
+        if Evaluate(DateTimeValue, InputText) then
+            exit(true);
+        if TryParseIsoDateTimeParts(InputText, ParsedDate, ParsedTime) then begin
+            DateTimeValue := CreateDateTime(ParsedDate, ParsedTime);
+            exit(true);
+        end;
+        exit(false);
+    end;
+
+    local procedure TryParseTimeValue(InputText: Text; var TimeValue: Time): Boolean
+    var
+        ParsedDate: Date;
+    begin
+        if Evaluate(TimeValue, InputText) then
+            exit(true);
+        if TryParseIsoTimeValue(InputText, TimeValue) then
+            exit(true);
+        if TryParseIsoDateTimeParts(InputText, ParsedDate, TimeValue) then
+            exit(true);
+        exit(false);
+    end;
+
+    local procedure TryParseIsoDateValue(InputText: Text; var DateValue: Date): Boolean
+    begin
+        if StrLen(InputText) < 10 then
+            exit(false);
+        exit(TryCreateIsoDate(CopyStr(InputText, 1, 10), DateValue));
+    end;
+
+    local procedure TryParseIsoDateTimeParts(InputText: Text; var DateValue: Date; var TimeValue: Time): Boolean
+    begin
+        if StrLen(InputText) < 19 then
+            exit(false);
+        if not TryCreateIsoDate(CopyStr(InputText, 1, 10), DateValue) then
+            exit(false);
+        if (CopyStr(InputText, 11, 1) <> 'T') and (CopyStr(InputText, 11, 1) <> ' ') then
+            exit(false);
+        exit(TryParseIsoTimeValue(CopyStr(InputText, 12), TimeValue));
+    end;
+
+    local procedure TryParseIsoTimeValue(InputText: Text; var TimeValue: Time): Boolean
+    var
+        TimeText: Text;
+        HourValue: Integer;
+        MinuteValue: Integer;
+        SecondValue: Integer;
+    begin
+        TimeText := InputText;
+        if (StrLen(TimeText) >= 1) and (CopyStr(TimeText, 1, 1) = 'T') then
+            TimeText := CopyStr(TimeText, 2);
+        if StrLen(TimeText) < 8 then
+            exit(false);
+        if (CopyStr(TimeText, 3, 1) <> ':') or (CopyStr(TimeText, 6, 1) <> ':') then
+            exit(false);
+        if not Evaluate(HourValue, CopyStr(TimeText, 1, 2)) then
+            exit(false);
+        if not Evaluate(MinuteValue, CopyStr(TimeText, 4, 2)) then
+            exit(false);
+        if not Evaluate(SecondValue, CopyStr(TimeText, 7, 2)) then
+            exit(false);
+        TimeValue := HMS2Time(HourValue, MinuteValue, SecondValue);
+        exit(true);
+    end;
+
+    local procedure TryCreateIsoDate(InputText: Text; var DateValue: Date): Boolean
+    var
+        YearValue: Integer;
+        MonthValue: Integer;
+        DayValue: Integer;
+    begin
+        if StrLen(InputText) < 10 then
+            exit(false);
+        if (CopyStr(InputText, 5, 1) <> '-') or (CopyStr(InputText, 8, 1) <> '-') then
+            exit(false);
+        if not Evaluate(YearValue, CopyStr(InputText, 1, 4)) then
+            exit(false);
+        if not Evaluate(MonthValue, CopyStr(InputText, 6, 2)) then
+            exit(false);
+        if not Evaluate(DayValue, CopyStr(InputText, 9, 2)) then
+            exit(false);
+        DateValue := DMY2Date(DayValue, MonthValue, YearValue);
+        exit(true);
     end;
 
     procedure SetFieldFilterFromText(var SourceRef: RecordRef; FieldId: Integer; FilterText: Text)
