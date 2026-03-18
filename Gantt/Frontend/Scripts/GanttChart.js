@@ -89,10 +89,7 @@
             <span class="lve-dirty-indicator" hidden>Unsaved changes</span>
           </div>
           <div class="lve-gantt-board">
-            <div class="lve-label-pane">
-              <div class="lve-label-head" aria-hidden="true"></div>
-              <div class="lve-label-scroll"></div>
-            </div>
+            <div class="lve-label-pane"></div>
             <div class="lve-grid-pane">
               <div class="lve-timeline-head"></div>
               <div class="lve-scroll-body">
@@ -129,8 +126,6 @@
         viewSelect: shell.querySelector('.lve-view-select'),
         timegrainSelect: shell.querySelector('.lve-timegrain-select'),
         labelPane: shell.querySelector('.lve-label-pane'),
-        labelHead: shell.querySelector('.lve-label-head'),
-        labelScroll: shell.querySelector('.lve-label-scroll'),
         timelineHead: shell.querySelector('.lve-timeline-head'),
         scrollBody: shell.querySelector('.lve-scroll-body'),
         gridCanvas: shell.querySelector('.lve-grid-canvas'),
