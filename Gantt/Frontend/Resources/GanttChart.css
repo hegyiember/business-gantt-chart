@@ -108,6 +108,14 @@
   z-index: 4;
   background: #fff;
   border-bottom: 1px solid var(--gantt-border);
+  overflow: hidden;
+  width: 100%;
+}
+
+.lve-timeline-track {
+  position: relative;
+  min-width: 100%;
+  will-change: transform;
 }
 
 .lve-timeline-months,

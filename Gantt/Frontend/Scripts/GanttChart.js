@@ -186,7 +186,8 @@
         labelSurface: null,
         gridBackground: null,
         gridRowLayer: null,
-        gridBarLayer: null
+        gridBarLayer: null,
+        timelineTrack: null
       };
     }
 
@@ -221,7 +222,7 @@
 
       this.ui.scrollBody.addEventListener('scroll', () => {
         this.lastScrollLeft = this.ui.scrollBody.scrollLeft;
-        this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+        this.syncTimelineHeaderPosition();
         this.syncLabelViewport();
         this.scheduleViewportRender();
         this.syncMiniMapViewport();
@@ -303,9 +304,14 @@
       const desiredScrollLeft = this.dateToX(centerDate) - body.clientWidth / 2;
       body.scrollLeft = clamp(desiredScrollLeft, 0, Math.max(0, this.totalTimelineWidth - body.clientWidth));
       this.lastScrollLeft = body.scrollLeft;
-      this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+      this.syncTimelineHeaderPosition();
       this.syncLabelViewport();
       this.syncMiniMapViewport();
+    }
+
+    syncTimelineHeaderPosition() {
+      if (!this.ui.timelineTrack) return;
+      this.ui.timelineTrack.style.transform = `translateX(${-this.lastScrollLeft}px)`;
     }
 
     setBusy(caption, isBusy) {
@@ -359,6 +365,7 @@
         this.ui.timelineHead.innerHTML = '';
         this.ui.gridCanvas.innerHTML = '<svg class="lve-dependency-layer"></svg>';
         this.ui.dependencyLayer = this.ui.gridCanvas.querySelector('.lve-dependency-layer');
+        this.ui.timelineTrack = null;
         this.renderDirtyState();
         return;
       }
@@ -369,7 +376,7 @@
       this.computeTimeline();
       this.renderTimelineHeader();
       this.renderRowsAndGrid();
-      this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+      this.syncTimelineHeaderPosition();
       this.syncLabelViewport();
       this.renderViewport();
       this.renderMiniMap();
@@ -377,7 +384,10 @@
     }
 
     syncTimegrainButtons() {
-      const grains = ['Day', 'Week', 'Month', 'Year'];
+      const supportsHour = this.hasSubDayPrecision(this.payload?.bars || []);
+      const grains = supportsHour || this.timeGrain === 'Hour'
+        ? ['Hour', 'Day', 'Week', 'Month', 'Year']
+        : ['Day', 'Week', 'Month', 'Year'];
       this.ui.timegrainGroup.innerHTML = '';
       const fragment = document.createDocumentFragment();
       grains.forEach((grain) => {
@@ -690,6 +700,10 @@
     }
 
     renderTimelineHeader() {
+      const track = document.createElement('div');
+      track.className = 'lve-timeline-track';
+      track.style.width = `${this.totalTimelineWidth}px`;
+
       const topBand = document.createElement('div');
       topBand.className = 'lve-timeline-months';
       const bottomBand = document.createElement('div');
@@ -720,10 +734,13 @@
         bottomBand.appendChild(cell);
       });
 
-      this.ui.timelineHead.style.width = `${this.totalTimelineWidth}px`;
+      track.appendChild(topBand);
+      track.appendChild(bottomBand);
+      this.ui.timelineHead.style.width = '100%';
       this.ui.timelineHead.innerHTML = '';
-      this.ui.timelineHead.appendChild(topBand);
-      this.ui.timelineHead.appendChild(bottomBand);
+      this.ui.timelineHead.appendChild(track);
+      this.ui.timelineTrack = track;
+      this.syncTimelineHeaderPosition();
     }
 
     renderRowsAndGrid() {
