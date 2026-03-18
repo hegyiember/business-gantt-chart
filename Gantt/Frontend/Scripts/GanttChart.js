@@ -436,8 +436,15 @@
         if (!this.barMapByRow.has(bar.rowId)) this.barMapByRow.set(bar.rowId, []);
         this.barMapByRow.get(bar.rowId).push(bar);
         if (bar.barId) this.barById.set(bar.barId, bar);
-        if (bar.dependencyKey) this.barByDependencyKey.set(bar.dependencyKey, bar);
+        if (bar.dependencyKey) {
+          this.barByDependencyKey.set(this.getDependencyLookupKey(bar.mappingLineNo, bar.dependencyKey), bar);
+          if (!this.barByDependencyKey.has(bar.dependencyKey)) this.barByDependencyKey.set(bar.dependencyKey, bar);
+        }
       });
+    }
+
+    getDependencyLookupKey(mappingLineNo, dependencyKey) {
+      return `${mappingLineNo || 0}|${dependencyKey || ''}`;
     }
 
     computeVisibleRows(rows) {
