@@ -1,4 +1,4 @@
-controladdin "LVE Gantt Diagram"
+controladdin "DGOG Gantt Diagram"
 {
     HorizontalStretch = true;
     VerticalStretch = true;

@@ -10,7 +10,7 @@ page 71891731 "LVE Gantt Host"
     {
         area(Content)
         {
-            usercontrol(GanttHost; "LVE Gantt Diagram")
+            usercontrol(GanttHost; "DGOG Gantt Diagram")
             {
                 ApplicationArea = All;
 
