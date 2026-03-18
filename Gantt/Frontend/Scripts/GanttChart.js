@@ -1059,8 +1059,10 @@
       svg.appendChild(defs);
 
       deps.forEach((dep) => {
-        const sourceBar = this.barByDependencyKey.get(dep.sourceKey);
-        const targetBar = this.barByDependencyKey.get(dep.targetKey);
+        const sourceBar = this.barByDependencyKey.get(this.getDependencyLookupKey(dep.mappingLineNo, dep.sourceKey))
+          || this.barByDependencyKey.get(dep.sourceKey);
+        const targetBar = this.barByDependencyKey.get(this.getDependencyLookupKey(dep.mappingLineNo, dep.targetKey))
+          || this.barByDependencyKey.get(dep.targetKey);
         if (!sourceBar || !targetBar) return;
         if (!visibleRowIds.has(sourceBar.rowId) && !visibleRowIds.has(targetBar.rowId)) return;
 
