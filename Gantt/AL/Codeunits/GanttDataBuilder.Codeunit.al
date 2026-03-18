@@ -1,9 +1,9 @@
-codeunit 71891733 "LVE Gantt Data Builder"
+codeunit 71891733 "DGOG Gantt Data Builder"
 {
     procedure BuildPayload(SetupId: Integer; RequestedViewCode: Code[20]; ContextKey: Text): Text
     var
-        GanttSetup: Record "LVE Gantt Setup";
-        GanttView: Record "LVE Gantt View";
+        GanttSetup: Record "DGOG Gantt Setup";
+        GanttView: Record "DGOG Gantt View";
         RootJson: JsonObject;
         SetupJson: JsonObject;
         ActiveViewJson: JsonObject;
@@ -12,6 +12,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         BarsJson: JsonArray;
         DependenciesJson: JsonArray;
         AggregatesJson: JsonArray;
+        MappingLinesJson: JsonArray;
         PayloadText: Text;
         RangeStart: DateTime;
         RangeEnd: DateTime;
@@ -28,11 +29,13 @@ codeunit 71891733 "LVE Gantt Data Builder"
 
         BuildSetupJson(GanttSetup, GanttView, ContextKey, SetupJson, ActiveViewJson);
         BuildViewsJson(SetupId, ViewsJson);
+        BuildMappingLinesJson(SetupId, EffectiveViewCode, MappingLinesJson);
         BuildRuntimeArrays(GanttSetup, GanttView, RowsJson, BarsJson, DependenciesJson, AggregatesJson, RangeStart, RangeEnd);
 
         RootJson.Add('setup', SetupJson);
         RootJson.Add('activeView', ActiveViewJson);
         RootJson.Add('views', ViewsJson);
+        RootJson.Add('mappingLines', MappingLinesJson);
         RootJson.Add('rows', RowsJson);
         RootJson.Add('bars', BarsJson);
         RootJson.Add('dependencies', DependenciesJson);
@@ -45,9 +48,9 @@ codeunit 71891733 "LVE Gantt Data Builder"
     end;
 
     var
-        ValidationHelper: Codeunit "LVE Gantt Validation Helper";
+        ValidationHelper: Codeunit "DGOG Gantt Validation Helper";
 
-    local procedure BuildSetupJson(GanttSetup: Record "LVE Gantt Setup"; GanttView: Record "LVE Gantt View"; ContextKey: Text; var SetupJson: JsonObject; var ActiveViewJson: JsonObject)
+    local procedure BuildSetupJson(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; ContextKey: Text; var SetupJson: JsonObject; var ActiveViewJson: JsonObject)
     begin
         SetupJson.Add('setupId', GanttSetup."ID");
         SetupJson.Add('name', GanttSetup."Name");
@@ -72,7 +75,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
 
     local procedure BuildViewsJson(SetupId: Integer; var ViewsJson: JsonArray)
     var
-        GanttView: Record "LVE Gantt View";
+        GanttView: Record "DGOG Gantt View";
         ViewJson: JsonObject;
     begin
         GanttView.SetRange("Setup ID", SetupId);
@@ -90,9 +93,28 @@ codeunit 71891733 "LVE Gantt Data Builder"
         until GanttView.Next() = 0;
     end;
 
-    local procedure BuildRuntimeArrays(GanttSetup: Record "LVE Gantt Setup"; GanttView: Record "LVE Gantt View"; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var AggregatesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
+    local procedure BuildMappingLinesJson(SetupId: Integer; ViewCode: Code[20]; var MappingLinesJson: JsonArray)
     var
-        MappingLine: Record "LVE Gantt Mapping Line";
+        MappingLine: Record "DGOG Gantt Mapping Line";
+        MappingLineJson: JsonObject;
+    begin
+        MappingLine.SetRange("Setup ID", SetupId);
+        MappingLine.SetRange("View Code", ViewCode);
+        if not MappingLine.FindSet() then
+            exit;
+
+        repeat
+            Clear(MappingLineJson);
+            MappingLineJson.Add('lineNo', MappingLine."Line No.");
+            MappingLineJson.Add('startDateFieldId', MappingLine."Start Date Field ID");
+            MappingLineJson.Add('endDateFieldId', MappingLine."End Date Field ID");
+            MappingLinesJson.Add(MappingLineJson);
+        until MappingLine.Next() = 0;
+    end;
+
+    local procedure BuildRuntimeArrays(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var AggregatesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
+    var
+        MappingLine: Record "DGOG Gantt Mapping Line";
     begin
         RangeStart := CreateDateTime(CalcDate('<-7D>', WorkDate()), 0T);
         RangeEnd := CreateDateTime(CalcDate('<+30D>', WorkDate()), 235959T);
@@ -114,7 +136,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         until MappingLine.Next() = 0;
     end;
 
-    local procedure AppendRecordsForMapping(GanttSetup: Record "LVE Gantt Setup"; GanttView: Record "LVE Gantt View"; MappingLine: Record "LVE Gantt Mapping Line"; ParentJoinValue: Text; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
+    local procedure AppendRecordsForMapping(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; MappingLine: Record "DGOG Gantt Mapping Line"; ParentJoinValue: Text; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
     var
         SourceRef: RecordRef;
         RowJson: JsonObject;
@@ -163,9 +185,9 @@ codeunit 71891733 "LVE Gantt Data Builder"
         until SourceRef.Next() = 0;
     end;
 
-    local procedure AppendChildMappings(GanttSetup: Record "LVE Gantt Setup"; GanttView: Record "LVE Gantt View"; ParentLineNo: Integer; ParentJoinValue: Text; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
+    local procedure AppendChildMappings(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; ParentLineNo: Integer; ParentJoinValue: Text; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
     var
-        ChildMapping: Record "LVE Gantt Mapping Line";
+        ChildMapping: Record "DGOG Gantt Mapping Line";
     begin
         ChildMapping.SetRange("Setup ID", GanttSetup."ID");
         ChildMapping.SetRange("View Code", GanttView."View Code");
@@ -178,7 +200,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         until ChildMapping.Next() = 0;
     end;
 
-    local procedure BuildRowJson(var SourceRef: RecordRef; MappingLine: Record "LVE Gantt Mapping Line"; ViewCode: Code[20]; RowId: Text; ParentRowId: Text; Level: Integer; HasChildren: Boolean; var RowJson: JsonObject)
+    local procedure BuildRowJson(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; ViewCode: Code[20]; RowId: Text; ParentRowId: Text; Level: Integer; HasChildren: Boolean; var RowJson: JsonObject)
     var
         TooltipFields: JsonArray;
         TooltipTitle: Text;
@@ -209,7 +231,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         RowJson.Add('tooltipFields', TooltipFields);
     end;
 
-    local procedure BuildBarJson(var SourceRef: RecordRef; MappingLine: Record "LVE Gantt Mapping Line"; RowId: Text; Level: Integer; var BarJson: JsonObject; var StartValue: DateTime; var EndValue: DateTime)
+    local procedure BuildBarJson(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; RowId: Text; Level: Integer; var BarJson: JsonObject; var StartValue: DateTime; var EndValue: DateTime)
     var
         LabelText: Text;
         StatusText: Text;
@@ -258,7 +280,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         BarJson.Add('depth', Level);
     end;
 
-    local procedure BuildDependencyJson(var SourceRef: RecordRef; MappingLine: Record "LVE Gantt Mapping Line"; RowId: Text; var DependencyJson: JsonObject)
+    local procedure BuildDependencyJson(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; RowId: Text; var DependencyJson: JsonObject)
     var
         SourceKey: Text;
         TargetKey: Text;
@@ -282,9 +304,9 @@ codeunit 71891733 "LVE Gantt Data Builder"
         DependencyJson.Add('sourceRecordId', Format(SourceRef.RecordId));
     end;
 
-    local procedure BuildTooltipFields(var SourceRef: RecordRef; MappingLine: Record "LVE Gantt Mapping Line"; var TooltipFields: JsonArray)
+    local procedure BuildTooltipFields(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; var TooltipFields: JsonArray)
     var
-        DetailLine: Record "LVE Gantt Detail Line";
+        DetailLine: Record "DGOG Gantt Detail Line";
         TooltipFieldJson: JsonObject;
         CaptionText: Text;
     begin
@@ -307,7 +329,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         until DetailLine.Next() = 0;
     end;
 
-    local procedure ResolveProgressPercent(var SourceRef: RecordRef; MappingLine: Record "LVE Gantt Mapping Line"): Decimal
+    local procedure ResolveProgressPercent(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"): Decimal
     var
         Numerator: Decimal;
         Denominator: Decimal;
@@ -361,7 +383,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         end;
     end;
 
-    local procedure GetContextKey(var SourceRef: RecordRef; MappingLine: Record "LVE Gantt Mapping Line"): Text
+    local procedure GetContextKey(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"): Text
     var
         ContextKey: Text;
     begin
@@ -373,7 +395,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
 
     local procedure HasChildMapping(SetupId: Integer; ViewCode: Code[20]; ParentLineNo: Integer): Boolean
     var
-        ChildMapping: Record "LVE Gantt Mapping Line";
+        ChildMapping: Record "DGOG Gantt Mapping Line";
     begin
         ChildMapping.SetRange("Setup ID", SetupId);
         ChildMapping.SetRange("View Code", ViewCode);
@@ -381,12 +403,12 @@ codeunit 71891733 "LVE Gantt Data Builder"
         exit(ChildMapping.FindFirst());
     end;
 
-    local procedure HasBar(MappingLine: Record "LVE Gantt Mapping Line"): Boolean
+    local procedure HasBar(MappingLine: Record "DGOG Gantt Mapping Line"): Boolean
     begin
         exit((MappingLine."Start Date Field ID" <> 0) and (MappingLine."End Date Field ID" <> 0));
     end;
 
-    local procedure HasDependency(MappingLine: Record "LVE Gantt Mapping Line"): Boolean
+    local procedure HasDependency(MappingLine: Record "DGOG Gantt Mapping Line"): Boolean
     begin
         exit((MappingLine."Dependency Source Field ID" <> 0) and (MappingLine."Dependency Target Field ID" <> 0));
     end;

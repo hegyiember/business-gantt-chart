@@ -1,9 +1,9 @@
-page 71891727 "LVE Gantt Setup Card"
+page 71891727 "DGOG Gantt Setup Card"
 {
     ApplicationArea = All;
     Caption = 'Gantt Setup';
     PageType = Card;
-    SourceTable = "LVE Gantt Setup";
+    SourceTable = "DGOG Gantt Setup";
     UsageCategory = Administration;
 
     layout
@@ -89,7 +89,7 @@ page 71891727 "LVE Gantt Setup Card"
             group(Views)
             {
                 Caption = 'Views';
-                part(ViewList; "LVE Gantt View Part")
+                part(ViewList; "DGOG Gantt View Part")
                 {
                     ApplicationArea = All;
                     SubPageLink = "Setup ID" = field("ID");
@@ -99,7 +99,7 @@ page 71891727 "LVE Gantt Setup Card"
             group(Mappings)
             {
                 Caption = 'Mapping Lines';
-                part(MappingList; "LVE Gantt Mapping Line Part")
+                part(MappingList; "DGOG Gantt Mapping Line Part")
                 {
                     ApplicationArea = All;
                     SubPageLink = "Setup ID" = field("ID");
@@ -109,7 +109,7 @@ page 71891727 "LVE Gantt Setup Card"
             group(Details)
             {
                 Caption = 'Detail Lines';
-                part(DetailList; "LVE Gantt Detail Line Part")
+                part(DetailList; "DGOG Gantt Detail Line Part")
                 {
                     ApplicationArea = All;
                     SubPageLink = "Setup ID" = field("ID");
@@ -132,7 +132,7 @@ page 71891727 "LVE Gantt Setup Card"
 
                 trigger OnAction()
                 var
-                    ValidationHelper: Codeunit "LVE Gantt Validation Helper";
+                    ValidationHelper: Codeunit "DGOG Gantt Validation Helper";
                 begin
                     ValidationHelper.ValidateSetup(Rec);
                     Message('The setup is valid.');
@@ -147,7 +147,7 @@ page 71891727 "LVE Gantt Setup Card"
 
                 trigger OnAction()
                 begin
-                    Page.Run(Page::"LVE Gantt Host", Rec);
+                    Page.Run(Page::"DGOG Gantt Host", Rec);
                 end;
             }
         }

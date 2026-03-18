@@ -1,4 +1,4 @@
-codeunit 71891734 "LVE Gantt Save Handler"
+codeunit 71891734 "DGOG Gantt Save Handler"
 {
     procedure ApplyPendingChanges(PendingChangesJson: Text)
     var
@@ -17,7 +17,7 @@ codeunit 71891734 "LVE Gantt Save Handler"
     end;
 
     var
-        ValidationHelper: Codeunit "LVE Gantt Validation Helper";
+        ValidationHelper: Codeunit "DGOG Gantt Validation Helper";
 
     local procedure ApplySingleChange(ChangeObject: JsonObject)
     var

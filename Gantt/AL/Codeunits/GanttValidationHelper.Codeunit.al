@@ -1,9 +1,9 @@
-codeunit 71891732 "LVE Gantt Validation Helper"
+codeunit 71891732 "DGOG Gantt Validation Helper"
 {
-    procedure ValidateSetup(var GanttSetup: Record "LVE Gantt Setup")
+    procedure ValidateSetup(var GanttSetup: Record "DGOG Gantt Setup")
     var
-        GanttView: Record "LVE Gantt View";
-        MappingLine: Record "LVE Gantt Mapping Line";
+        GanttView: Record "DGOG Gantt View";
+        MappingLine: Record "DGOG Gantt Mapping Line";
     begin
         if not GanttSetup.Active then
             Error('Gantt setup %1 is not active.', GanttSetup."ID");
@@ -21,10 +21,10 @@ codeunit 71891732 "LVE Gantt Validation Helper"
             Error('Gantt setup %1 must contain at least one mapping line.', GanttSetup."ID");
     end;
 
-    procedure ValidateView(GanttSetup: Record "LVE Gantt Setup"; GanttView: Record "LVE Gantt View")
+    procedure ValidateView(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View")
     var
-        MappingLine: Record "LVE Gantt Mapping Line";
-        DetailLine: Record "LVE Gantt Detail Line";
+        MappingLine: Record "DGOG Gantt Mapping Line";
+        DetailLine: Record "DGOG Gantt Detail Line";
     begin
         MappingLine.SetRange("Setup ID", GanttSetup."ID");
         MappingLine.SetRange("View Code", GanttView."View Code");
@@ -43,7 +43,7 @@ codeunit 71891732 "LVE Gantt Validation Helper"
             until DetailLine.Next() = 0;
     end;
 
-    procedure ValidateMappingLine(MappingLine: Record "LVE Gantt Mapping Line")
+    procedure ValidateMappingLine(MappingLine: Record "DGOG Gantt Mapping Line")
     begin
         EnsureTableExists(MappingLine."Source Table ID");
         EnsureFieldExists(MappingLine."Source Table ID", MappingLine."Key Field ID");
@@ -72,9 +72,9 @@ codeunit 71891732 "LVE Gantt Validation Helper"
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Tooltip Title Field ID");
     end;
 
-    procedure ValidateDetailLine(DetailLine: Record "LVE Gantt Detail Line")
+    procedure ValidateDetailLine(DetailLine: Record "DGOG Gantt Detail Line")
     var
-        MappingLine: Record "LVE Gantt Mapping Line";
+        MappingLine: Record "DGOG Gantt Mapping Line";
     begin
         if not MappingLine.Get(DetailLine."Setup ID", DetailLine."View Code", DetailLine."Mapping Line No.") then
             Error('Detail line %1 references missing mapping line %2 in view %3 setup %4.', DetailLine."Line No.", DetailLine."Mapping Line No.", DetailLine."View Code", DetailLine."Setup ID");
@@ -84,8 +84,8 @@ codeunit 71891732 "LVE Gantt Validation Helper"
 
     procedure ResolveViewCode(SetupId: Integer; RequestedViewCode: Code[20]): Code[20]
     var
-        GanttSetup: Record "LVE Gantt Setup";
-        GanttView: Record "LVE Gantt View";
+        GanttSetup: Record "DGOG Gantt Setup";
+        GanttView: Record "DGOG Gantt View";
     begin
         if RequestedViewCode <> '' then
             exit(RequestedViewCode);
@@ -136,9 +136,9 @@ codeunit 71891732 "LVE Gantt Validation Helper"
         EnsureFieldExists(TableId, FieldId);
     end;
 
-    procedure EnsureParentRelationIfSpecified(MappingLine: Record "LVE Gantt Mapping Line")
+    procedure EnsureParentRelationIfSpecified(MappingLine: Record "DGOG Gantt Mapping Line")
     var
-        ParentMappingLine: Record "LVE Gantt Mapping Line";
+        ParentMappingLine: Record "DGOG Gantt Mapping Line";
         ChildFieldMeta: Record Field;
         ParentFieldMeta: Record Field;
     begin
