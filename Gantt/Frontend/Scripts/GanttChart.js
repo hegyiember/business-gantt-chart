@@ -25,6 +25,7 @@
       this.payload = null;
       this.zoom = 100;
       this.timeGrain = 'Day';
+      this.effectiveTimeGrain = 'Day';
       this.pendingChanges = [];
       this.pendingByKey = new Map();
       this.dirty = false;
@@ -88,7 +89,10 @@
             <span class="lve-dirty-indicator" hidden>Unsaved changes</span>
           </div>
           <div class="lve-gantt-board">
-            <div class="lve-label-pane"></div>
+            <div class="lve-label-pane">
+              <div class="lve-label-head" aria-hidden="true"></div>
+              <div class="lve-label-scroll"></div>
+            </div>
             <div class="lve-grid-pane">
               <div class="lve-timeline-head"></div>
               <div class="lve-scroll-body">
@@ -125,6 +129,8 @@
         viewSelect: shell.querySelector('.lve-view-select'),
         timegrainSelect: shell.querySelector('.lve-timegrain-select'),
         labelPane: shell.querySelector('.lve-label-pane'),
+        labelHead: shell.querySelector('.lve-label-head'),
+        labelScroll: shell.querySelector('.lve-label-scroll'),
         timelineHead: shell.querySelector('.lve-timeline-head'),
         scrollBody: shell.querySelector('.lve-scroll-body'),
         gridCanvas: shell.querySelector('.lve-grid-canvas'),
@@ -154,7 +160,7 @@
       });
 
       this.ui.timegrainSelect.addEventListener('change', () => {
-        this.timeGrain = this.ui.timegrainSelect.value;
+        this.timeGrain = this.normalizeTimeGrain(this.ui.timegrainSelect.value);
         this.render();
         this.log('View', 'info', 'Time grain changed', { timeGrain: this.timeGrain });
       });
@@ -167,9 +173,16 @@
       this.ui.scrollBody.addEventListener('scroll', () => {
         this.lastScrollLeft = this.ui.scrollBody.scrollLeft;
         this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+        this.syncVerticalScroll(this.ui.scrollBody.scrollTop || 0);
         this.syncMiniMapViewport();
         this.scheduleViewportRender();
       });
+
+      this.ui.labelPane.addEventListener('wheel', (event) => {
+        this.ui.scrollBody.scrollTop += event.deltaY;
+        this.ui.scrollBody.scrollLeft += event.deltaX;
+        event.preventDefault();
+      }, { passive: false });
 
       this.root.addEventListener('mousemove', (event) => this.onPointerMove(event));
       this.root.addEventListener('mouseup', () => this.finishDrag());
@@ -180,12 +193,14 @@
       this.payload = payload || {};
       const setup = this.payload.setup || {};
       this.zoom = clamp(setup.defaultZoom || 100, 30, 400);
-      this.timeGrain = setup.defaultTimeGrain || 'Day';
+      this.timeGrain = this.normalizeTimeGrain(setup.defaultTimeGrain || 'Day');
       this.pendingChanges = [];
       this.pendingByKey.clear();
       this.dirty = false;
       this.expandedRows.clear();
       this.selectedBarId = '';
+      this.ui.zoomLabel.textContent = `${this.zoom}%`;
+      this.syncTimegrainSelect();
       this.populateViewSelector();
       this.render();
       this.log('Data', 'info', 'Payload loaded', {
@@ -213,14 +228,30 @@
       return selected ? (selected.contextKey || '') : '';
     }
 
+    normalizeTimeGrain(value) {
+      const grain = String(value || '').trim().toLowerCase();
+      if (grain === 'week') return 'Week';
+      if (grain === 'month') return 'Month';
+      if (grain === 'year') return 'Year';
+      return 'Day';
+    }
+
+    syncTimegrainSelect() {
+      const normalized = this.normalizeTimeGrain(this.timeGrain);
+      this.timeGrain = normalized;
+      if (this.ui.timegrainSelect.value !== normalized) {
+        this.ui.timegrainSelect.value = normalized;
+      }
+    }
+
+    syncVerticalScroll(scrollTop) {
+      if (!this.ui.labelScroll) return;
+      this.ui.labelScroll.scrollTop = scrollTop;
+    }
+
     setZoom(value) {
       this.zoom = clamp(Math.round(value / 10) * 10, 30, 400);
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
-      if (this.zoom >= 220) this.timeGrain = 'Hour';
-      else if (this.timeGrain === 'Hour') this.timeGrain = 'Day';
-      if (this.ui.timegrainSelect.value !== this.timeGrain && this.timeGrain !== 'Hour') {
-        this.ui.timegrainSelect.value = this.timeGrain;
-      }
       this.render();
       this.log('View', 'info', 'Zoom changed', { zoom: this.zoom, grain: this.timeGrain });
     }
@@ -268,12 +299,13 @@
       this.ui.emptyState.hidden = rows.length > 0;
       this.ui.errorState.hidden = true;
       if (!rows.length) {
-        this.ui.labelPane.innerHTML = '';
+        this.ui.labelScroll.innerHTML = '';
         this.ui.timelineHead.innerHTML = '';
         this.ui.gridCanvas.innerHTML = '<svg class="lve-dependency-layer"></svg>';
         return;
       }
 
+      this.syncTimegrainSelect();
       this.indexBars(bars);
       this.computeTimeline();
       this.computeVisibleRows(rows);
@@ -297,26 +329,86 @@
       });
     }
 
+    startOfWeek(date) {
+      const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+      const day = start.getDay();
+      const offset = day === 0 ? -6 : 1 - day;
+      start.setDate(start.getDate() + offset);
+      return start;
+    }
+
+    endOfWeek(date) {
+      const end = this.startOfWeek(date);
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      return end;
+    }
+
+    getWeekNumber(date) {
+      const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNumber = target.getUTCDay() || 7;
+      target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
+      const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+      return Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
+    }
+
     computeTimeline() {
       const rangeStart = toDate(this.payload.rangeStart) || new Date();
       const rangeEnd = toDate(this.payload.rangeEnd) || new Date(Date.now() + 14 * 24 * 3600 * 1000);
-      this.timelineStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate(), 0, 0, 0, 0);
-      this.timelineEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59, 999);
-
-      const useHourly = this.zoom >= 220;
+      const selectedGrain = this.normalizeTimeGrain(this.timeGrain);
+      const useHourly = selectedGrain === 'Day' && this.zoom >= 220;
       const baseWidth = 30 * (this.zoom / 100);
-      const colWidth = useHourly ? Math.max(18, baseWidth * 0.6) : Math.max(22, baseWidth);
+
+      this.effectiveTimeGrain = useHourly ? 'Hour' : selectedGrain;
       this.timelineCols = [];
 
-      if (useHourly) {
+      if (this.effectiveTimeGrain === 'Hour') {
+        this.timelineStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate(), 0, 0, 0, 0);
+        this.timelineEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59, 999);
         const cursor = new Date(this.timelineStart);
+        const colWidth = Math.max(18, baseWidth * 0.6);
         while (cursor <= this.timelineEnd) {
           const next = new Date(cursor.getTime() + 3600 * 1000);
           this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'hour' });
           cursor.setHours(cursor.getHours() + 1);
         }
-      } else {
+      } else if (this.effectiveTimeGrain === 'Week') {
+        this.timelineStart = this.startOfWeek(rangeStart);
+        this.timelineEnd = this.endOfWeek(rangeEnd);
         const cursor = new Date(this.timelineStart);
+        const colWidth = Math.max(48, 64 * (this.zoom / 100));
+        while (cursor <= this.timelineEnd) {
+          const next = new Date(cursor);
+          next.setDate(next.getDate() + 7);
+          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'week' });
+          cursor.setDate(cursor.getDate() + 7);
+        }
+      } else if (this.effectiveTimeGrain === 'Month') {
+        this.timelineStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1, 0, 0, 0, 0);
+        this.timelineEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth() + 1, 0, 23, 59, 59, 999);
+        const cursor = new Date(this.timelineStart);
+        const colWidth = Math.max(56, 82 * (this.zoom / 100));
+        while (cursor <= this.timelineEnd) {
+          const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1, 0, 0, 0, 0);
+          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'month' });
+          cursor.setMonth(cursor.getMonth() + 1);
+          cursor.setDate(1);
+        }
+      } else if (this.effectiveTimeGrain === 'Year') {
+        this.timelineStart = new Date(rangeStart.getFullYear(), 0, 1, 0, 0, 0, 0);
+        this.timelineEnd = new Date(rangeEnd.getFullYear(), 11, 31, 23, 59, 59, 999);
+        const cursor = new Date(this.timelineStart);
+        const colWidth = Math.max(88, 120 * (this.zoom / 100));
+        while (cursor <= this.timelineEnd) {
+          const next = new Date(cursor.getFullYear() + 1, 0, 1, 0, 0, 0, 0);
+          this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'year' });
+          cursor.setFullYear(cursor.getFullYear() + 1, 0, 1);
+        }
+      } else {
+        this.timelineStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate(), 0, 0, 0, 0);
+        this.timelineEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59, 999);
+        const cursor = new Date(this.timelineStart);
+        const colWidth = Math.max(22, baseWidth);
         while (cursor <= this.timelineEnd) {
           const next = new Date(cursor.getTime() + 24 * 3600 * 1000);
           this.timelineCols.push({ start: new Date(cursor), end: next, width: colWidth, type: 'day' });
@@ -413,52 +505,94 @@
       return { start, end: Math.max(start, end) };
     }
 
+    getTopBandMeta(col) {
+      if (col.type === 'hour' || col.type === 'day') {
+        return {
+          key: `${col.start.getFullYear()}-${col.start.getMonth()}`,
+          label: col.start.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+        };
+      }
+      if (col.type === 'week' || col.type === 'month') {
+        return {
+          key: `${col.start.getFullYear()}`,
+          label: String(col.start.getFullYear())
+        };
+      }
+      const decadeStart = Math.floor(col.start.getFullYear() / 10) * 10;
+      return {
+        key: `${decadeStart}`,
+        label: `${decadeStart}s`
+      };
+    }
+
+    getBottomBandLabel(col) {
+      if (col.type === 'hour') return `${String(col.start.getHours()).padStart(2, '0')}:00`;
+      if (col.type === 'day') return `${col.start.getDate()}`;
+      if (col.type === 'week') return `W${String(this.getWeekNumber(col.start)).padStart(2, '0')}`;
+      if (col.type === 'month') return col.start.toLocaleDateString(undefined, { month: 'short' });
+      return String(col.start.getFullYear());
+    }
+
+    isWeekendColumn(col) {
+      return col.type === 'day' && (col.start.getDay() === 0 || col.start.getDay() === 6);
+    }
+
+    isPrimaryBoundary(col) {
+      if (col.type === 'hour') return col.start.getHours() === 0;
+      if (col.type === 'day') return col.start.getDate() === 1;
+      if (col.type === 'week') return col.start.getMonth() !== col.end.getMonth();
+      if (col.type === 'month') return col.start.getMonth() === 0;
+      return col.start.getFullYear() % 10 === 0;
+    }
+
     renderTimelineHeader() {
-      const monthBand = document.createElement('div');
-      monthBand.className = 'lve-timeline-months';
-      const dayBand = document.createElement('div');
-      dayBand.className = 'lve-timeline-days';
+      const topBand = document.createElement('div');
+      topBand.className = 'lve-timeline-months';
+      const bottomBand = document.createElement('div');
+      bottomBand.className = 'lve-timeline-days';
 
-      let currentMonthKey = '';
-      let monthCell = null;
+      let currentGroupKey = '';
+      let topCell = null;
       this.timelineCols.forEach((col) => {
-        const monthKey = `${col.start.getFullYear()}-${col.start.getMonth()}`;
-        if (monthKey !== currentMonthKey) {
-          currentMonthKey = monthKey;
-          monthCell = document.createElement('div');
-          monthCell.className = 'month-cell';
-          monthCell.textContent = col.start.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-          monthCell.style.width = '0px';
-          monthBand.appendChild(monthCell);
+        const topMeta = this.getTopBandMeta(col);
+        if (topMeta.key !== currentGroupKey) {
+          currentGroupKey = topMeta.key;
+          topCell = document.createElement('div');
+          topCell.className = 'month-cell';
+          topCell.textContent = topMeta.label;
+          topCell.style.width = '0px';
+          topBand.appendChild(topCell);
         }
-        if (monthCell) monthCell.style.width = `${parseFloat(monthCell.style.width) + col.width}px`;
+        if (topCell) topCell.style.width = `${parseFloat(topCell.style.width) + col.width}px`;
 
-        const day = document.createElement('div');
-        const isWeekend = col.start.getDay() === 6 || col.start.getDay() === 0;
-        day.className = `day-cell${isWeekend ? ' weekend' : ''}`;
-        day.style.width = `${col.width}px`;
-        day.style.minWidth = `${col.width}px`;
-        day.style.maxWidth = `${col.width}px`;
-        day.textContent = col.type === 'hour' ? `${String(col.start.getHours()).padStart(2, '0')}:00` : `${col.start.getDate()}`;
-        dayBand.appendChild(day);
+        const cell = document.createElement('div');
+        cell.className = `day-cell${this.isWeekendColumn(col) ? ' weekend' : ''}`;
+        cell.style.width = `${col.width}px`;
+        cell.style.minWidth = `${col.width}px`;
+        cell.style.maxWidth = `${col.width}px`;
+        cell.textContent = this.getBottomBandLabel(col);
+        bottomBand.appendChild(cell);
       });
 
       this.ui.timelineHead.style.width = `${this.totalTimelineWidth}px`;
       this.ui.timelineHead.innerHTML = '';
-      this.ui.timelineHead.appendChild(monthBand);
-      this.ui.timelineHead.appendChild(dayBand);
+      this.ui.timelineHead.appendChild(topBand);
+      this.ui.timelineHead.appendChild(bottomBand);
+
+      const headerHeight = this.ui.timelineHead.offsetHeight || 52;
+      this.ui.labelHead.style.height = `${headerHeight}px`;
     }
 
     renderRowsAndGrid() {
       this.viewportWidth = this.totalTimelineWidth;
       this.totalContentHeight = this.visibleRows.length * this.rowHeight;
 
-      this.ui.labelPane.innerHTML = '';
+      this.ui.labelScroll.innerHTML = '';
       const labelSurface = document.createElement('div');
       labelSurface.style.position = 'relative';
       labelSurface.style.height = `${this.totalContentHeight}px`;
       labelSurface.style.minHeight = `${this.totalContentHeight}px`;
-      this.ui.labelPane.appendChild(labelSurface);
+      this.ui.labelScroll.appendChild(labelSurface);
       this.ui.labelSurface = labelSurface;
 
       this.ui.gridCanvas.innerHTML = '';
@@ -506,17 +640,17 @@
 
       const today = new Date();
       const todayX = this.dateToX(today);
-      const nowStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
 
       this.timelineCols.forEach((col) => {
         const x = this.dateToX(col.start);
         const line = document.createElement('div');
         line.className = 'vline';
-        if (col.start.getDate() === 1 || (col.type === 'hour' && col.start.getHours() === 0)) line.classList.add('month-boundary');
+        if (this.isPrimaryBoundary(col)) line.classList.add('month-boundary');
         line.style.left = `${x}px`;
         bg.appendChild(line);
 
-        if (col.type !== 'hour' && (col.start.getDay() === 0 || col.start.getDay() === 6)) {
+        if (this.isWeekendColumn(col)) {
           const weekend = document.createElement('div');
           weekend.className = 'weekend-bg';
           weekend.style.left = `${x}px`;
@@ -524,7 +658,7 @@
           bg.appendChild(weekend);
         }
 
-        if (col.start < nowStart) {
+        if (col.end <= todayStart) {
           const past = document.createElement('div');
           past.className = 'past-bg';
           past.style.left = `${x}px`;
@@ -537,6 +671,8 @@
       todayLine.className = 'today-line';
       todayLine.style.left = `${todayX}px`;
       bg.appendChild(todayLine);
+
+      this.syncVerticalScroll(this.ui.scrollBody.scrollTop || 0);
     }
 
     renderViewport() {

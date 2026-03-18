@@ -19,8 +19,13 @@
 .lve-gantt-shell {
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 1920px;
   height: 100%;
+  max-height: 1080px;
   min-height: 480px;
+  margin: 0 auto;
+  overflow: hidden;
   border: 1px solid var(--gantt-border);
   background: var(--gantt-bg);
   color: var(--gantt-text);
@@ -36,76 +41,35 @@
   border-bottom: 1px solid var(--gantt-border);
   background: var(--gantt-toolbar-bg);
 }
-
-.lve-left-controls,
-.lve-right-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.lve-btn,
-.lve-timegrain-select,
-.lve-view-select {
-  border: 1px solid var(--gantt-border);
-  background: #fff;
-  color: var(--gantt-text);
-  border-radius: 4px;
-  min-height: 28px;
-  padding: 0 8px;
-  cursor: pointer;
-}
-
-.lve-btn-primary {
-  background: var(--gantt-primary);
-  color: #fff;
-  border-color: var(--gantt-primary);
-}
-
-.lve-btn:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.lve-status-strip {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  border-bottom: 1px solid var(--gantt-border);
-  padding: 6px 10px;
-  color: var(--gantt-subtext);
-  font-size: 12px;
-}
-
-.dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 99px;
-  margin-right: 4px;
-}
-
-.dot.planned { background: #4A90D9; }
-.dot.firm { background: #E8922E; }
-.dot.released { background: #3AAB5C; }
-.dot.finished { background: #8A8F99; }
-
-.lve-dirty-indicator {
-  margin-left: auto;
-  color: #b63a3a;
-  font-weight: 600;
-}
-
+...
 .lve-gantt-board {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 320px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .lve-label-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   border-right: 1px solid var(--gantt-border);
+  background: #fff;
+}
+
+.lve-label-head {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--gantt-border);
+  background: #fff;
+}
+
+.lve-label-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
   background: #fff;
 }
 
@@ -113,6 +77,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .lve-timeline-head {
@@ -148,7 +114,7 @@
 
 .lve-scroll-body {
   overflow: auto;
-  height: 100%;
+  flex: 1 1 auto;
   min-height: 0;
   position: relative;
 }
