@@ -111,8 +111,6 @@ table 71891720 "LVE Gantt Setup"
     begin
         if "Default Zoom %" = 0 then
             "Default Zoom %" := 100;
-        if "Default Time Grain" = "Default Time Grain"::" " then
-            "Default Time Grain" := "Default Time Grain"::Day;
         if not "Active" then
             "Active" := true;
     end;
