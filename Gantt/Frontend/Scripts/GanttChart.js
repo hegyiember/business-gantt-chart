@@ -889,9 +889,20 @@
 
       this.renderVisibleRows(range.start, range.end);
       this.renderBars(range.start, range.end);
-      this.renderDependencies(range.start, range.end);
       this.renderConflicts();
       this.syncLabelViewport();
+      this.scheduleDependencyRender(range.start, range.end);
+    }
+
+    scheduleDependencyRender(startIndex, endIndex) {
+      if (this.dependencyRenderFrame) {
+        window.cancelAnimationFrame(this.dependencyRenderFrame);
+      }
+
+      this.dependencyRenderFrame = window.requestAnimationFrame(() => {
+        this.dependencyRenderFrame = 0;
+        this.renderDependencies(startIndex, endIndex);
+      });
     }
 
     renderVisibleRows(startIndex, endIndex) {
@@ -1029,11 +1040,13 @@
     }
 
     renderDependencies(startIndex, endIndex) {
+      if (!this.ui.dependencyLayer) return;
       if ((this.payload?.setup || {}).enableDependencies === false) return;
       if ((this.payload?.activeView || {}).dependencyEnabled === false) return;
 
       const deps = this.payload.dependencies || [];
       const svg = this.ui.dependencyLayer;
+      svg.innerHTML = '';
       svg.setAttribute('width', String(this.totalTimelineWidth));
       svg.setAttribute('height', String(this.totalContentHeight));
 
