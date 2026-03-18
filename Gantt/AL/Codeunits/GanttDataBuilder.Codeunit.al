@@ -195,7 +195,7 @@ codeunit 71891733 "LVE Gantt Data Builder"
         RowJson.Add('descriptionText', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Description Field ID"));
         RowJson.Add('level', Level);
         RowJson.Add('hasChildren', HasChildren and MappingLine."Is Expandable");
-        RowJson.Add('isExpanded', Level < 2);
+        RowJson.Add('isExpanded', false);
         RowJson.Add('isEditable', MappingLine."Is Editable");
         RowJson.Add('statusValue', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Status Field ID"));
         RowJson.Add('colorValue', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Color Override Field ID"));
