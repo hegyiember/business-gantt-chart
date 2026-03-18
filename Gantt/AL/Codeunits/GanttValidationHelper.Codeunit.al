@@ -24,6 +24,7 @@ codeunit 71891732 "LVE Gantt Validation Helper"
     procedure ValidateView(GanttSetup: Record "LVE Gantt Setup"; GanttView: Record "LVE Gantt View")
     var
         MappingLine: Record "LVE Gantt Mapping Line";
+        DetailLine: Record "LVE Gantt Detail Line";
     begin
         MappingLine.SetRange("Setup ID", GanttSetup."ID");
         MappingLine.SetRange("View Code", GanttView."View Code");
@@ -33,14 +34,21 @@ codeunit 71891732 "LVE Gantt Validation Helper"
         repeat
             ValidateMappingLine(MappingLine);
         until MappingLine.Next() = 0;
+
+        DetailLine.SetRange("Setup ID", GanttSetup."ID");
+        DetailLine.SetRange("View Code", GanttView."View Code");
+        if DetailLine.FindSet() then
+            repeat
+                ValidateDetailLine(DetailLine);
+            until DetailLine.Next() = 0;
     end;
 
     procedure ValidateMappingLine(MappingLine: Record "LVE Gantt Mapping Line")
     begin
         EnsureTableExists(MappingLine."Source Table ID");
         EnsureFieldExists(MappingLine."Source Table ID", MappingLine."Key Field ID");
+        EnsureParentRelationIfSpecified(MappingLine);
 
-        EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Relation Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Description Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Start Date Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."End Date Field ID");
@@ -62,6 +70,16 @@ codeunit 71891732 "LVE Gantt Validation Helper"
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Color Override Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Label Override Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Tooltip Title Field ID");
+    end;
+
+    procedure ValidateDetailLine(DetailLine: Record "LVE Gantt Detail Line")
+    var
+        MappingLine: Record "LVE Gantt Mapping Line";
+    begin
+        if not MappingLine.Get(DetailLine."Setup ID", DetailLine."View Code", DetailLine."Mapping Line No.") then
+            Error('Detail line %1 references missing mapping line %2 in view %3 setup %4.', DetailLine."Line No.", DetailLine."Mapping Line No.", DetailLine."View Code", DetailLine."Setup ID");
+
+        EnsureFieldExists(MappingLine."Source Table ID", DetailLine."Field ID");
     end;
 
     procedure ResolveViewCode(SetupId: Integer; RequestedViewCode: Code[20]): Code[20]
@@ -116,6 +134,39 @@ codeunit 71891732 "LVE Gantt Validation Helper"
         if FieldId = 0 then
             exit;
         EnsureFieldExists(TableId, FieldId);
+    end;
+
+    procedure EnsureParentRelationIfSpecified(MappingLine: Record "LVE Gantt Mapping Line")
+    var
+        ParentMappingLine: Record "LVE Gantt Mapping Line";
+        ChildFieldMeta: Record Field;
+        ParentFieldMeta: Record Field;
+    begin
+        if MappingLine."Parent Line No." = 0 then begin
+            if MappingLine."Relation Field ID" <> 0 then
+                Error('Relation Field ID must be blank on root mapping line %1.', MappingLine."Line No.");
+            exit;
+        end;
+
+        if MappingLine."Relation Field ID" = 0 then
+            Error('Relation Field ID is required on non-root mapping line %1.', MappingLine."Line No.");
+
+        if not ParentMappingLine.Get(MappingLine."Setup ID", MappingLine."View Code", MappingLine."Parent Line No.") then
+            Error('Parent mapping line %1 does not exist for mapping line %2.', MappingLine."Parent Line No.", MappingLine."Line No.");
+
+        EnsureFieldExists(MappingLine."Source Table ID", MappingLine."Relation Field ID");
+        EnsureFieldExists(ParentMappingLine."Source Table ID", ParentMappingLine."Key Field ID");
+
+        ChildFieldMeta.Get(MappingLine."Source Table ID", MappingLine."Relation Field ID");
+        ParentFieldMeta.Get(ParentMappingLine."Source Table ID", ParentMappingLine."Key Field ID");
+
+        if ChildFieldMeta.Type <> ParentFieldMeta.Type then
+            Error(
+              'Relation field %1 on table %2 must have the same type as parent key field %3 on table %4.',
+              MappingLine."Relation Field ID",
+              MappingLine."Source Table ID",
+              ParentMappingLine."Key Field ID",
+              ParentMappingLine."Source Table ID");
     end;
 
     procedure HasField(TableId: Integer; FieldId: Integer): Boolean

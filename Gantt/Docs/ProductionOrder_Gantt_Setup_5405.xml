@@ -110,24 +110,24 @@
         <Cell><Data ss:Type="Number">10000</Data></Cell>
         <Cell><Data ss:Type="Number">5405</Data></Cell>
         <Cell><Data ss:Type="Number">0</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">No.</Data></Cell>
-        <Cell><Data ss:Type="String">Description</Data></Cell>
-        <Cell><Data ss:Type="String">Starting Date</Data></Cell>
-        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
-        <Cell><Data ss:Type="String">Due Date</Data></Cell>
-        <Cell><Data ss:Type="String">Status</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">2</Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
+        <Cell><Data ss:Type="Number">21</Data></Cell>
+        <Cell><Data ss:Type="Number">23</Data></Cell>
+        <Cell><Data ss:Type="Number">24</Data></Cell>
+        <Cell><Data ss:Type="Number">1</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
         <Cell><Data ss:Type="String">TRUE</Data></Cell>
         <Cell><Data ss:Type="String">FALSE</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">No.</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">2</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
         <Cell><Data ss:Type="String">Production Order (root)</Data></Cell>
       </Row>
       <Row>
@@ -136,24 +136,24 @@
         <Cell><Data ss:Type="Number">20000</Data></Cell>
         <Cell><Data ss:Type="Number">5406</Data></Cell>
         <Cell><Data ss:Type="Number">10000</Data></Cell>
-        <Cell><Data ss:Type="String">Prod. Order No.</Data></Cell>
-        <Cell><Data ss:Type="String">Line No.</Data></Cell>
-        <Cell><Data ss:Type="String">Description</Data></Cell>
-        <Cell><Data ss:Type="String">Starting Date</Data></Cell>
-        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
-        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
-        <Cell><Data ss:Type="String">Status</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="Number">2</Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
+        <Cell><Data ss:Type="Number">13</Data></Cell>
+        <Cell><Data ss:Type="Number">48</Data></Cell>
+        <Cell><Data ss:Type="Number">50</Data></Cell>
+        <Cell><Data ss:Type="Number">47</Data></Cell>
+        <Cell><Data ss:Type="Number">1</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
         <Cell><Data ss:Type="String">TRUE</Data></Cell>
         <Cell><Data ss:Type="String">TRUE</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">Line No.</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">13</Data></Cell>
         <Cell><Data ss:Type="String">Prod. Order Line (child of 5405)</Data></Cell>
       </Row>
       <Row>
@@ -162,24 +162,24 @@
         <Cell><Data ss:Type="Number">30000</Data></Cell>
         <Cell><Data ss:Type="Number">5409</Data></Cell>
         <Cell><Data ss:Type="Number">20000</Data></Cell>
-        <Cell><Data ss:Type="String">Prod. Order Line No.</Data></Cell>
-        <Cell><Data ss:Type="String">Operation No.</Data></Cell>
-        <Cell><Data ss:Type="String">Description</Data></Cell>
-        <Cell><Data ss:Type="String">Starting Date</Data></Cell>
-        <Cell><Data ss:Type="String">Ending Date</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">Status</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
+        <Cell><Data ss:Type="Number">3</Data></Cell>
+        <Cell><Data ss:Type="Number">4</Data></Cell>
+        <Cell><Data ss:Type="Number">11</Data></Cell>
+        <Cell><Data ss:Type="Number">71</Data></Cell>
+        <Cell><Data ss:Type="Number">73</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">74</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
         <Cell><Data ss:Type="String">FALSE</Data></Cell>
         <Cell><Data ss:Type="String">TRUE</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">Operation No.</Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String"></Data></Cell>
-        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">4</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">0</Data></Cell>
+        <Cell><Data ss:Type="Number">11</Data></Cell>
         <Cell><Data ss:Type="String">Prod. Order Routing Line (child of 5406)</Data></Cell>
       </Row>
     </Table>
@@ -197,19 +197,19 @@
         <Cell ss:StyleID="Header"><Data ss:Type="String">Sequence</Data></Cell>
         <Cell ss:StyleID="Header"><Data ss:Type="String">Is Visible</Data></Cell>
       </Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="String">No.</Data></Cell><Cell><Data ss:Type="String">Order No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="String">Due Date</Data></Cell><Cell><Data ss:Type="String">Due Date</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="String">Line No.</Data></Cell><Cell><Data ss:Type="String">Line No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="String">Item No.</Data></Cell><Cell><Data ss:Type="String">Item No.</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="String">Quantity</Data></Cell><Cell><Data ss:Type="String">Quantity</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">50000</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">50</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="String">Operation No.</Data></Cell><Cell><Data ss:Type="String">Operation No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="String">Operation Description</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="String">Work Center No.</Data></Cell><Cell><Data ss:Type="String">Work Center</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
-      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">2</Data></Cell><Cell><Data ss:Type="String">Order No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">3</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">1</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="Number">24</Data></Cell><Cell><Data ss:Type="String">Due Date</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">3</Data></Cell><Cell><Data ss:Type="String">Line No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">11</Data></Cell><Cell><Data ss:Type="String">Item No.</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">13</Data></Cell><Cell><Data ss:Type="String">Description</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">Quantity</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">50000</Data></Cell><Cell><Data ss:Type="Number">1</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">50</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">10000</Data></Cell><Cell><Data ss:Type="Number">4</Data></Cell><Cell><Data ss:Type="String">Operation No.</Data></Cell><Cell><Data ss:Type="Number">10</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">20000</Data></Cell><Cell><Data ss:Type="Number">11</Data></Cell><Cell><Data ss:Type="String">Operation Description</Data></Cell><Cell><Data ss:Type="Number">20</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">9</Data></Cell><Cell><Data ss:Type="String">Work Center</Data></Cell><Cell><Data ss:Type="Number">30</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
+      <Row><Cell><Data ss:Type="Number">5405</Data></Cell><Cell><Data ss:Type="String">MAIN</Data></Cell><Cell><Data ss:Type="Number">30000</Data></Cell><Cell><Data ss:Type="Number">40000</Data></Cell><Cell><Data ss:Type="Number">74</Data></Cell><Cell><Data ss:Type="String">Status</Data></Cell><Cell><Data ss:Type="Number">40</Data></Cell><Cell><Data ss:Type="String">TRUE</Data></Cell></Row>
     </Table>
   </Worksheet>
 </Workbook>

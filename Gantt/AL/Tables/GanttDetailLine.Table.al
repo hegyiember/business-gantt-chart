@@ -36,6 +36,7 @@ table 71891723 "LVE Gantt Detail Line"
         {
             Caption = 'Field ID';
             DataClassification = CustomerContent;
+            TableRelation = Field."No." where(TableNo = field("Source Table ID"));
             ToolTip = 'Specifies the source field that should be shown in the hover tooltip and detail popup.';
         }
         field(6; "Caption Override"; Text[80])
@@ -55,6 +56,14 @@ table 71891723 "LVE Gantt Detail Line"
             Caption = 'Is Visible';
             DataClassification = CustomerContent;
             ToolTip = 'Specifies whether this detail line should be rendered in tooltips.';
+        }
+        field(9; "Source Table ID"; Integer)
+        {
+            Caption = 'Source Table ID';
+            Editable = false;
+            FieldClass = FlowField;
+            CalcFormula = lookup("LVE Gantt Mapping Line"."Source Table ID" where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"), "Line No." = field("Mapping Line No.")));
+            ToolTip = 'Specifies the source table from the linked mapping line; used to validate the selected field ID.';
         }
     }
 
