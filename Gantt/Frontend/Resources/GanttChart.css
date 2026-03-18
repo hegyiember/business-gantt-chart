@@ -246,7 +246,11 @@
 }
 
 .lve-bar.is-drag-source {
-  opacity: 0.35;
+  visibility: hidden;
+}
+
+.lve-bar-ghost {
+  z-index: 4;
 }
 
 .lve-bar.selected {

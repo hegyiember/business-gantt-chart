@@ -47,7 +47,7 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
     begin
         EnsureTableExists(MappingLine."Source Table ID");
         EnsureFieldExists(MappingLine."Source Table ID", MappingLine."Key Field ID");
-        EnsureParentRelationIfSpecified(MappingLine);
+        EnsureParentRelations(MappingLine);
 
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Description Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Start Date Field ID");
@@ -60,9 +60,7 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Grouping Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Context Identity Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Resource Group Field ID");
-        EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Dependency Source Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Dependency Target Field ID");
-        EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Dependency Type Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Aggregation Value Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Aggregation Capacity Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Conflict Group Field ID");
@@ -136,37 +134,53 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
         EnsureFieldExists(TableId, FieldId);
     end;
 
-    procedure EnsureParentRelationIfSpecified(MappingLine: Record "DGOG Gantt Mapping Line")
+    local procedure EnsureParentRelations(MappingLine: Record "DGOG Gantt Mapping Line")
     var
         ParentMappingLine: Record "DGOG Gantt Mapping Line";
+        MappingRelation: Record "DGOG Gantt Mapping Relation";
         ChildFieldMeta: Record Field;
         ParentFieldMeta: Record Field;
     begin
+        MappingRelation.SetRange("Setup ID", MappingLine."Setup ID");
+        MappingRelation.SetRange("View Code", MappingLine."View Code");
+        MappingRelation.SetRange("Child Line No.", MappingLine."Line No.");
+
         if MappingLine."Parent Line No." = 0 then begin
-            if MappingLine."Relation Field ID" <> 0 then
-                Error('Relation Field ID must be blank on root mapping line %1.', MappingLine."Line No.");
+            if MappingRelation.FindFirst() then
+                Error('Parent field mappings must be blank on root mapping line %1.', MappingLine."Line No.");
             exit;
         end;
-
-        if MappingLine."Relation Field ID" = 0 then
-            Error('Relation Field ID is required on non-root mapping line %1.', MappingLine."Line No.");
 
         if not ParentMappingLine.Get(MappingLine."Setup ID", MappingLine."View Code", MappingLine."Parent Line No.") then
             Error('Parent mapping line %1 does not exist for mapping line %2.', MappingLine."Parent Line No.", MappingLine."Line No.");
 
-        EnsureFieldExists(MappingLine."Source Table ID", MappingLine."Relation Field ID");
-        EnsureFieldExists(ParentMappingLine."Source Table ID", ParentMappingLine."Key Field ID");
+        if not MappingRelation.FindSet() then
+            Error('At least one parent field mapping is required on non-root mapping line %1.', MappingLine."Line No.");
 
-        ChildFieldMeta.Get(MappingLine."Source Table ID", MappingLine."Relation Field ID");
-        ParentFieldMeta.Get(ParentMappingLine."Source Table ID", ParentMappingLine."Key Field ID");
+        repeat
+            if MappingRelation."Parent Line No." <> MappingLine."Parent Line No." then
+                Error('Parent field mapping %1 must point to parent line %2 for mapping line %3.', MappingRelation."Line No.", MappingLine."Parent Line No.", MappingLine."Line No.");
 
-        if ChildFieldMeta.Type <> ParentFieldMeta.Type then
-            Error(
-              'Relation field %1 on table %2 must have the same type as parent key field %3 on table %4.',
-              MappingLine."Relation Field ID",
-              MappingLine."Source Table ID",
-              ParentMappingLine."Key Field ID",
-              ParentMappingLine."Source Table ID");
+            if MappingRelation."Child Table ID" <> MappingLine."Source Table ID" then
+                Error('Current-line table on parent field mapping %1 must be table %2.', MappingRelation."Line No.", MappingLine."Source Table ID");
+
+            if MappingRelation."Parent Table ID" <> ParentMappingLine."Source Table ID" then
+                Error('Parent-line table on parent field mapping %1 must be table %2.', MappingRelation."Line No.", ParentMappingLine."Source Table ID");
+
+            EnsureFieldExists(MappingLine."Source Table ID", MappingRelation."Child Field ID");
+            EnsureFieldExists(ParentMappingLine."Source Table ID", MappingRelation."Parent Field ID");
+
+            ChildFieldMeta.Get(MappingLine."Source Table ID", MappingRelation."Child Field ID");
+            ParentFieldMeta.Get(ParentMappingLine."Source Table ID", MappingRelation."Parent Field ID");
+
+            if ChildFieldMeta.Type <> ParentFieldMeta.Type then
+                Error(
+                  'Current-line field %1 on table %2 must have the same type as parent-line field %3 on table %4.',
+                  MappingRelation."Child Field ID",
+                  MappingLine."Source Table ID",
+                  MappingRelation."Parent Field ID",
+                  ParentMappingLine."Source Table ID");
+        until MappingRelation.Next() = 0;
     end;
 
     procedure HasField(TableId: Integer; FieldId: Integer): Boolean

@@ -35,11 +35,6 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the parent mapping line.';
                 }
-                field("Relation Field ID"; Rec."Relation Field ID")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the child table field that links this line to its parent business identity.';
-                }
                 field("Key Field ID"; Rec."Key Field ID")
                 {
                     ApplicationArea = All;
@@ -100,20 +95,10 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the grouping field used for aggregate utilization overlays.';
                 }
-                field("Dependency Source Field ID"; Rec."Dependency Source Field ID")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the predecessor dependency field.';
-                }
                 field("Dependency Target Field ID"; Rec."Dependency Target Field ID")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the successor dependency field.';
-                }
-                field("Dependency Type Field ID"; Rec."Dependency Type Field ID")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the dependency type field.';
+                    ToolTip = 'Specifies the related task key field used for one-way dependency arrows.';
                 }
                 field("Aggregation Value Field ID"; Rec."Aggregation Value Field ID")
                 {
@@ -155,6 +140,37 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the field used as the tooltip title.';
                 }
+            }
+        }
+    }
+
+    actions
+    {
+        area(Processing)
+        {
+            action(MapParentFields)
+            {
+                ApplicationArea = All;
+                Caption = 'Map Parent Fields';
+                Image = LinkAccount;
+                Promoted = true;
+                PromotedCategory = Process;
+                ToolTip = 'Opens the field-pair list that links the current line to its parent line.';
+
+                trigger OnAction()
+                var
+                    MappingRelation: Record "DGOG Gantt Mapping Relation";
+                begin
+                    Rec.TestField("Parent Line No.");
+                    Rec.TestField("Setup ID");
+                    Rec.TestField("View Code");
+                    Rec.TestField("Line No.");
+
+                    MappingRelation.SetRange("Setup ID", Rec."Setup ID");
+                    MappingRelation.SetRange("View Code", Rec."View Code");
+                    MappingRelation.SetRange("Child Line No.", Rec."Line No.");
+                    Page.RunModal(Page::"DGOG Gantt Mapping Rel. List", MappingRelation);
+                end;
             }
         }
     }

@@ -39,13 +39,6 @@ table 71891722 "DGOG Gantt Mapping Line"
             TableRelation = "DGOG Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
             ToolTip = 'Specifies the parent mapping line. Leave blank for a root hierarchy level.';
         }
-        field(6; "Relation Field ID"; Integer)
-        {
-            Caption = 'Relation Field ID';
-            DataClassification = CustomerContent;
-            TableRelation = Field."No." where(TableNo = field("Source Table ID"));
-            ToolTip = 'Specifies the source-table field that links this row level to the parent level business identity.';
-        }
         field(7; "Key Field ID"; Integer)
         {
             Caption = 'Key Field ID';
@@ -149,26 +142,12 @@ table 71891722 "DGOG Gantt Mapping Line"
             TableRelation = Field."No." where(TableNo = field("Source Table ID"));
             ToolTip = 'Specifies the field that groups rows or bars for aggregate utilization calculations.';
         }
-        field(22; "Dependency Source Field ID"; Integer)
-        {
-            Caption = 'Dependency Source Field ID';
-            DataClassification = CustomerContent;
-            TableRelation = Field."No." where(TableNo = field("Source Table ID"));
-            ToolTip = 'Specifies the field that provides the predecessor reference for dependency rendering.';
-        }
         field(23; "Dependency Target Field ID"; Integer)
         {
             Caption = 'Dependency Target Field ID';
             DataClassification = CustomerContent;
             TableRelation = Field."No." where(TableNo = field("Source Table ID"));
-            ToolTip = 'Specifies the field that provides the successor reference for dependency rendering.';
-        }
-        field(24; "Dependency Type Field ID"; Integer)
-        {
-            Caption = 'Dependency Type Field ID';
-            DataClassification = CustomerContent;
-            TableRelation = Field."No." where(TableNo = field("Source Table ID"));
-            ToolTip = 'Specifies the field that stores the dependency type such as FS, SS, FF, or SF.';
+            ToolTip = 'Specifies the field that contains the related task key. The arrow is always rendered from the smaller key value to the bigger key value.';
         }
         field(25; "Aggregation Value Field ID"; Integer)
         {
