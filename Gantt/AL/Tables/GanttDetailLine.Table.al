@@ -1,4 +1,4 @@
-table 71891723 "LVE Gantt Detail Line"
+table 71891723 "DGOG Gantt Detail Line"
 {
     Caption = 'Gantt Detail Line';
     DataClassification = CustomerContent;
@@ -9,21 +9,21 @@ table 71891723 "LVE Gantt Detail Line"
         {
             Caption = 'Setup ID';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt Setup"."ID";
+            TableRelation = "DGOG Gantt Setup"."ID";
             ToolTip = 'Specifies the parent setup that owns this detail mapping line.';
         }
         field(2; "View Code"; Code[20])
         {
             Caption = 'View Code';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt View"."View Code" where("Setup ID" = field("Setup ID"));
+            TableRelation = "DGOG Gantt View"."View Code" where("Setup ID" = field("Setup ID"));
             ToolTip = 'Specifies which view this detail field belongs to.';
         }
         field(3; "Mapping Line No."; Integer)
         {
             Caption = 'Mapping Line No.';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
+            TableRelation = "DGOG Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
             ToolTip = 'Specifies which mapping line this detail field decorates in tooltips and detail popups.';
         }
         field(4; "Line No."; Integer)
@@ -62,7 +62,7 @@ table 71891723 "LVE Gantt Detail Line"
             Caption = 'Source Table ID';
             Editable = false;
             FieldClass = FlowField;
-            CalcFormula = lookup("LVE Gantt Mapping Line"."Source Table ID" where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"), "Line No." = field("Mapping Line No.")));
+            CalcFormula = lookup("DGOG Gantt Mapping Line"."Source Table ID" where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"), "Line No." = field("Mapping Line No.")));
             ToolTip = 'Specifies the source table from the linked mapping line; used to validate the selected field ID.';
         }
     }

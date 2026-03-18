@@ -1,4 +1,4 @@
-page 71891730 "LVE Gantt Detail Line Part"
+page 71891730 "DGOG Gantt Detail Line Part"
 {
     ApplicationArea = All;
     AutoSplitKey = true;
@@ -7,7 +7,7 @@ page 71891730 "LVE Gantt Detail Line Part"
     Editable = true;
     MultipleNewLines = true;
     PageType = ListPart;
-    SourceTable = "LVE Gantt Detail Line";
+    SourceTable = "DGOG Gantt Detail Line";
 
     layout
     {

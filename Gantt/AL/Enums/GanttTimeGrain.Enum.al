@@ -1,4 +1,4 @@
-enum 71891724 "LVE Gantt Time Grain"
+enum 71891724 "DGOG Gantt Time Grain"
 {
     Extensible = true;
     Caption = 'Gantt Time Grain';

@@ -1,4 +1,4 @@
-table 71891721 "LVE Gantt View"
+table 71891721 "DGOG Gantt View"
 {
     Caption = 'Gantt View';
     DataClassification = CustomerContent;
@@ -9,7 +9,7 @@ table 71891721 "LVE Gantt View"
         {
             Caption = 'Setup ID';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt Setup"."ID";
+            TableRelation = "DGOG Gantt Setup"."ID";
             ToolTip = 'Specifies the parent setup that owns this hierarchy view.';
         }
         field(2; "View Code"; Code[20])
@@ -38,7 +38,7 @@ table 71891721 "LVE Gantt View"
 
             trigger OnValidate()
             var
-                GanttView: Record "LVE Gantt View";
+                GanttView: Record "DGOG Gantt View";
             begin
                 if not "Is Default" then
                     exit;
@@ -58,7 +58,7 @@ table 71891721 "LVE Gantt View"
         {
             Caption = 'Root Mapping Line No.';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
+            TableRelation = "DGOG Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
             ToolTip = 'Specifies the top mapping line of the hierarchy for this view. Leave blank to treat all top-level mapping lines as roots.';
         }
         field(7; "Aggregation Enabled"; Boolean)

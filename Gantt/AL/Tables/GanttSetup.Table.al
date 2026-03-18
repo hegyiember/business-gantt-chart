@@ -1,9 +1,9 @@
-table 71891720 "LVE Gantt Setup"
+table 71891720 "DGOG Gantt Setup"
 {
     Caption = 'Gantt Setup';
     DataClassification = CustomerContent;
-    DrillDownPageId = "LVE Gantt Setup List";
-    LookupPageId = "LVE Gantt Setup List";
+    DrillDownPageId = "DGOG Gantt Setup List";
+    LookupPageId = "DGOG Gantt Setup List";
 
     fields
     {
@@ -29,7 +29,7 @@ table 71891720 "LVE Gantt Setup"
         {
             Caption = 'Default View Code';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt View"."View Code" where("Setup ID" = field("ID"));
+            TableRelation = "DGOG Gantt View"."View Code" where("Setup ID" = field("ID"));
             ToolTip = 'Specifies which configured view opens first when the Gantt page is launched for this setup.';
         }
         field(5; "Active"; Boolean)
@@ -45,7 +45,7 @@ table 71891720 "LVE Gantt Setup"
             InitValue = 100;
             ToolTip = 'Specifies the initial zoom level in percent. The frontend supports a range from 30 to 400 percent in 10 percent steps.';
         }
-        field(7; "Default Time Grain"; Enum "LVE Gantt Time Grain")
+        field(7; "Default Time Grain"; Enum "DGOG Gantt Time Grain")
         {
             Caption = 'Default Time Grain';
             DataClassification = CustomerContent;

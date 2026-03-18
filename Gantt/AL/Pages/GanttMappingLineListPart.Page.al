@@ -1,4 +1,4 @@
-page 71891729 "LVE Gantt Mapping Line Part"
+page 71891729 "DGOG Gantt Mapping Line Part"
 {
     ApplicationArea = All;
     AutoSplitKey = true;
@@ -7,7 +7,7 @@ page 71891729 "LVE Gantt Mapping Line Part"
     Editable = true;
     MultipleNewLines = true;
     PageType = ListPart;
-    SourceTable = "LVE Gantt Mapping Line";
+    SourceTable = "DGOG Gantt Mapping Line";
 
     layout
     {

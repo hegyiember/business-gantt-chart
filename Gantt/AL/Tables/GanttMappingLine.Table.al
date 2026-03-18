@@ -1,4 +1,4 @@
-table 71891722 "LVE Gantt Mapping Line"
+table 71891722 "DGOG Gantt Mapping Line"
 {
     Caption = 'Gantt Mapping Line';
     DataClassification = CustomerContent;
@@ -9,14 +9,14 @@ table 71891722 "LVE Gantt Mapping Line"
         {
             Caption = 'Setup ID';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt Setup"."ID";
+            TableRelation = "DGOG Gantt Setup"."ID";
             ToolTip = 'Specifies the parent setup that owns this mapping line.';
         }
         field(2; "View Code"; Code[20])
         {
             Caption = 'View Code';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt View"."View Code" where("Setup ID" = field("Setup ID"));
+            TableRelation = "DGOG Gantt View"."View Code" where("Setup ID" = field("Setup ID"));
             ToolTip = 'Specifies which configured view this mapping line belongs to.';
         }
         field(3; "Line No."; Integer)
@@ -36,7 +36,7 @@ table 71891722 "LVE Gantt Mapping Line"
         {
             Caption = 'Parent Line No.';
             DataClassification = CustomerContent;
-            TableRelation = "LVE Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
+            TableRelation = "DGOG Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
             ToolTip = 'Specifies the parent mapping line. Leave blank for a root hierarchy level.';
         }
         field(6; "Relation Field ID"; Integer)
@@ -184,7 +184,7 @@ table 71891722 "LVE Gantt Mapping Line"
             TableRelation = Field."No." where(TableNo = field("Source Table ID"));
             ToolTip = 'Specifies the numeric field that provides available capacity for aggregate utilization calculations.';
         }
-        field(27; "Aggregation Bucket Mode"; Enum "LVE Gantt Bucket Mode")
+        field(27; "Aggregation Bucket Mode"; Enum "DGOG Gantt Bucket Mode")
         {
             Caption = 'Aggregation Bucket Mode';
             DataClassification = CustomerContent;
