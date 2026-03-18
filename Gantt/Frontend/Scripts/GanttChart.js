@@ -168,80 +168,13 @@
       this.ui.scrollBody.addEventListener('scroll', () => {
         this.lastScrollLeft = this.ui.scrollBody.scrollLeft;
         this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
-        this.syncVerticalScroll(this.ui.scrollBody.scrollTop || 0);
-        this.syncMiniMapViewport();
         this.scheduleViewportRender();
+        this.syncMiniMapViewport();
       });
-
-      this.ui.labelPane.addEventListener('wheel', (event) => {
-        this.ui.scrollBody.scrollTop += event.deltaY;
-        this.ui.scrollBody.scrollLeft += event.deltaX;
-        event.preventDefault();
-      }, { passive: false });
 
       this.root.addEventListener('mousemove', (event) => this.onPointerMove(event));
       this.root.addEventListener('mouseup', () => this.finishDrag());
       this.root.addEventListener('mouseleave', () => this.finishDrag());
-    }
-
-    load(payload) {
-      this.payload = payload || {};
-      const setup = this.payload.setup || {};
-      this.zoom = clamp(setup.defaultZoom || 100, 30, 400);
-      this.timeGrain = this.normalizeTimeGrain(setup.defaultTimeGrain || 'Day');
-      this.pendingChanges = [];
-      this.pendingByKey.clear();
-      this.dirty = false;
-      this.expandedRows.clear();
-      this.selectedBarId = '';
-      this.ui.zoomLabel.textContent = `${this.zoom}%`;
-      this.syncTimegrainSelect();
-      this.populateViewSelector();
-      this.render();
-      this.log('Data', 'info', 'Payload loaded', {
-        rows: (this.payload.rows || []).length,
-        bars: (this.payload.bars || []).length,
-        dependencies: (this.payload.dependencies || []).length
-      });
-    }
-
-    populateViewSelector() {
-      const views = this.payload.views || [];
-      const activeView = (this.payload.activeView || {}).viewCode || '';
-      this.ui.viewSelect.innerHTML = '';
-      views.forEach((view) => {
-        const option = document.createElement('option');
-        option.value = view.viewCode;
-        option.textContent = view.name || view.viewCode;
-        if (view.viewCode === activeView) option.selected = true;
-        this.ui.viewSelect.appendChild(option);
-      });
-    }
-
-    getSelectedContextKey() {
-      const selected = this.barById.get(this.selectedBarId);
-      return selected ? (selected.contextKey || '') : '';
-    }
-
-    normalizeTimeGrain(value) {
-      const grain = String(value || '').trim().toLowerCase();
-      if (grain === 'week') return 'Week';
-      if (grain === 'month') return 'Month';
-      if (grain === 'year') return 'Year';
-      return 'Day';
-    }
-
-    syncTimegrainSelect() {
-      const normalized = this.normalizeTimeGrain(this.timeGrain);
-      this.timeGrain = normalized;
-      if (this.ui.timegrainSelect.value !== normalized) {
-        this.ui.timegrainSelect.value = normalized;
-      }
-    }
-
-    syncVerticalScroll(scrollTop) {
-      if (!this.ui.labelScroll) return;
-      this.ui.labelScroll.scrollTop = scrollTop;
     }
 
     setZoom(value) {
