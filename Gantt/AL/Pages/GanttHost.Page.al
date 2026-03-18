@@ -1,9 +1,9 @@
-page 71891731 "LVE Gantt Host"
+page 71891731 "DGOG Gantt Host"
 {
     ApplicationArea = All;
     Caption = 'Gantt';
     PageType = Card;
-    SourceTable = "LVE Gantt Setup";
+    SourceTable = "DGOG Gantt Setup";
     UsageCategory = Tasks;
 
     layout
@@ -118,8 +118,8 @@ page 71891731 "LVE Gantt Host"
     end;
 
     var
-        DataBuilder: Codeunit "LVE Gantt Data Builder";
-        SaveHandler: Codeunit "LVE Gantt Save Handler";
+        DataBuilder: Codeunit "DGOG Gantt Data Builder";
+        SaveHandler: Codeunit "DGOG Gantt Save Handler";
         ActiveViewCode: Code[20];
         LastContextKey: Text;
         LastLogCategory: Text;
@@ -129,7 +129,7 @@ page 71891731 "LVE Gantt Host"
 
     local procedure ResolveInitialViewCode(): Code[20]
     var
-        GanttView: Record "LVE Gantt View";
+        GanttView: Record "DGOG Gantt View";
     begin
         if Rec."Default View Code" <> '' then
             exit(Rec."Default View Code");

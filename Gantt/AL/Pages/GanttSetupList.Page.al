@@ -1,11 +1,11 @@
-page 71891726 "LVE Gantt Setup List"
+page 71891726 "DGOG Gantt Setup List"
 {
     ApplicationArea = All;
     Caption = 'Gantt Setups';
-    CardPageId = "LVE Gantt Setup Card";
+    CardPageId = "DGOG Gantt Setup Card";
     Editable = true;
     PageType = List;
-    SourceTable = "LVE Gantt Setup";
+    SourceTable = "DGOG Gantt Setup";
     UsageCategory = Administration;
 
     layout
@@ -56,7 +56,7 @@ page 71891726 "LVE Gantt Setup List"
 
                 trigger OnAction()
                 begin
-                    Page.Run(Page::"LVE Gantt Host", Rec);
+                    Page.Run(Page::"DGOG Gantt Host", Rec);
                 end;
             }
         }

@@ -11,12 +11,61 @@
 
   function toDate(value) {
     if (!value) return null;
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? null : d;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function startOfDay(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  }
+
+  function startOfWeek(date) {
+    const day = date.getDay();
+    const diff = (day + 6) % 7;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() - diff, 0, 0, 0, 0);
+  }
+
+  function startOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+  }
+
+  function startOfYear(date) {
+    return new Date(date.getFullYear(), 0, 1, 0, 0, 0, 0);
+  }
+
+  function addDays(date, amount) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount, 0, 0, 0, 0);
+  }
+
+  function addMonths(date, amount) {
+    return new Date(date.getFullYear(), date.getMonth() + amount, 1, 0, 0, 0, 0);
+  }
+
+  function addYears(date, amount) {
+    return new Date(date.getFullYear() + amount, 0, 1, 0, 0, 0, 0);
+  }
+
+  function getIsoWeek(date) {
+    const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNr = (target.getUTCDay() + 6) % 7;
+    target.setUTCDate(target.getUTCDate() - dayNr + 3);
+    const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+    const firstDayNr = (firstThursday.getUTCDay() + 6) % 7;
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNr + 3);
+    return 1 + Math.round((target - firstThursday) / 604800000);
   }
 
   class LVEGanttChart {
@@ -33,6 +82,7 @@
       this.dragState = null;
       this.expandedRows = new Set();
       this.visibleRows = [];
+      this.childRowsByParent = new Map();
       this.barMapByRow = new Map();
       this.barByDependencyKey = new Map();
       this.barById = new Map();
@@ -65,20 +115,15 @@
         <div class="lve-gantt-shell">
           <div class="lve-gantt-toolbar">
             <div class="lve-left-controls">
-              <button class="lve-btn" data-action="zoom-out" title="Zoom out">−</button>
+              <button class="lve-btn" data-action="zoom-out" title="Zoom out" type="button">−</button>
               <span class="lve-zoom-label">100%</span>
-              <button class="lve-btn" data-action="zoom-in" title="Zoom in">+</button>
-              <select class="lve-timegrain-select" aria-label="Time grain">
-                <option value="Day">Day</option>
-                <option value="Week">Week</option>
-                <option value="Month">Month</option>
-                <option value="Year">Year</option>
-              </select>
-              <select class="lve-view-select" aria-label="View"></select>
+              <button class="lve-btn" data-action="zoom-in" title="Zoom in" type="button">+</button>
+              <div class="lve-timegrain-group" aria-label="Time grain"></div>
+              <div class="lve-view-group" aria-label="View selector"></div>
             </div>
             <div class="lve-right-controls">
-              <button class="lve-btn" data-action="reload">Reload</button>
-              <button class="lve-btn lve-btn-primary" data-action="save" disabled>Save</button>
+              <button class="lve-btn" data-action="reload" type="button">Reload</button>
+              <button class="lve-btn lve-btn-primary" data-action="save" type="button" disabled>Save</button>
             </div>
           </div>
           <div class="lve-status-strip">
@@ -123,8 +168,8 @@
         zoomLabel: shell.querySelector('.lve-zoom-label'),
         saveButton: shell.querySelector('[data-action="save"]'),
         reloadButton: shell.querySelector('[data-action="reload"]'),
-        viewSelect: shell.querySelector('.lve-view-select'),
-        timegrainSelect: shell.querySelector('.lve-timegrain-select'),
+        timegrainGroup: shell.querySelector('.lve-timegrain-group'),
+        viewGroup: shell.querySelector('.lve-view-group'),
         labelPane: shell.querySelector('.lve-label-pane'),
         timelineHead: shell.querySelector('.lve-timeline-head'),
         scrollBody: shell.querySelector('.lve-scroll-body'),
@@ -136,6 +181,8 @@
         minimapWrap: shell.querySelector('.lve-minimap-wrap'),
         minimap: shell.querySelector('.lve-minimap'),
         minimapViewport: shell.querySelector('.lve-minimap-viewport'),
+        labelHead: null,
+        labelViewport: null,
         labelSurface: null,
         gridBackground: null,
         gridRowLayer: null,
@@ -154,20 +201,26 @@
         if (action === 'reload') this.requestClientReload();
       });
 
-      this.ui.timegrainSelect.addEventListener('change', () => {
-        this.timeGrain = this.normalizeTimeGrain(this.ui.timegrainSelect.value);
+      this.ui.timegrainGroup.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-grain]');
+        if (!button) return;
+        this.timeGrain = this.normalizeTimeGrain(button.getAttribute('data-grain'));
+        this.syncTimegrainButtons();
         this.render();
         this.log('View', 'info', 'Time grain changed', { timeGrain: this.timeGrain });
       });
 
-      this.ui.viewSelect.addEventListener('change', () => {
+      this.ui.viewGroup.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-view-code]');
+        if (!button) return;
         const contextKey = this.getSelectedContextKey();
-        invoke('ViewChangeRequested', [this.ui.viewSelect.value, contextKey]);
+        invoke('ViewChangeRequested', [button.getAttribute('data-view-code') || '', contextKey]);
       });
 
       this.ui.scrollBody.addEventListener('scroll', () => {
         this.lastScrollLeft = this.ui.scrollBody.scrollLeft;
         this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+        this.syncLabelViewport();
         this.scheduleViewportRender();
         this.syncMiniMapViewport();
       });
@@ -175,6 +228,44 @@
       this.root.addEventListener('mousemove', (event) => this.onPointerMove(event));
       this.root.addEventListener('mouseup', () => this.finishDrag());
       this.root.addEventListener('mouseleave', () => this.finishDrag());
+    }
+
+    load(payload) {
+      this.payload = payload || {};
+      this.pendingChanges = [];
+      this.pendingByKey.clear();
+      this.dirty = false;
+      this.selectedBarId = '';
+      this.dragState = null;
+
+      const setup = this.payload.setup || {};
+      this.timeGrain = this.normalizeTimeGrain(setup.defaultTimeGrain || this.timeGrain);
+      this.zoom = clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
+      this.ui.zoomLabel.textContent = `${this.zoom}%`;
+      this.seedExpandedRows();
+      this.render();
+    }
+
+    seedExpandedRows() {
+      this.expandedRows.clear();
+      (this.payload?.rows || []).forEach((row) => {
+        if (row && row.isExpanded) this.expandedRows.add(row.rowId);
+      });
+    }
+
+    normalizeTimeGrain(value) {
+      switch (String(value || '').trim().toLowerCase()) {
+        case 'day':
+          return 'Day';
+        case 'week':
+          return 'Week';
+        case 'month':
+          return 'Month';
+        case 'year':
+          return 'Year';
+        default:
+          return 'Day';
+      }
     }
 
     setZoom(value) {
@@ -202,8 +293,8 @@
     }
 
     requestClientSave() {
-      const payload = JSON.stringify(this.pendingChanges);
-      invoke('SaveRequested', [payload]);
+      if (!this.dirty || !(this.payload?.setup || {}).allowSave) return;
+      invoke('SaveRequested', [JSON.stringify(this.pendingChanges)]);
       this.log('Edit', 'info', 'Save requested', { count: this.pendingChanges.length });
     }
 
@@ -226,23 +317,310 @@
       const bars = this.payload.bars || [];
       this.ui.emptyState.hidden = rows.length > 0;
       this.ui.errorState.hidden = true;
+
+      this.syncTimegrainButtons();
+      this.syncViewButtons();
+
       if (!rows.length) {
         this.ui.labelPane.innerHTML = '';
         this.ui.timelineHead.innerHTML = '';
         this.ui.gridCanvas.innerHTML = '<svg class="lve-dependency-layer"></svg>';
+        this.ui.dependencyLayer = this.ui.gridCanvas.querySelector('.lve-dependency-layer');
+        this.renderDirtyState();
         return;
       }
 
-      this.syncTimegrainSelect();
       this.indexBars(bars);
-      this.computeTimeline();
       this.computeVisibleRows(rows);
       this.buildDerivedCaches();
+      this.computeTimeline();
       this.renderTimelineHeader();
       this.renderRowsAndGrid();
+      this.ui.timelineHead.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+      this.syncLabelViewport();
       this.renderViewport();
       this.renderMiniMap();
       this.renderDirtyState();
+    }
+
+    syncTimegrainButtons() {
+      const grains = ['Day', 'Week', 'Month', 'Year'];
+      this.ui.timegrainGroup.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      grains.forEach((grain) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `lve-btn${grain === this.timeGrain ? ' lve-btn-primary' : ''}`;
+        button.textContent = grain;
+        button.setAttribute('data-grain', grain);
+        fragment.appendChild(button);
+      });
+      this.ui.timegrainGroup.appendChild(fragment);
+    }
+
+    syncViewButtons() {
+      const views = this.payload?.views || [];
+      const activeViewCode = this.payload?.activeView?.viewCode || '';
+      const allowSwitching = (this.payload?.setup || {}).enableViewSwitching !== false;
+      this.ui.viewGroup.hidden = !allowSwitching || views.length <= 1;
+      this.ui.viewGroup.innerHTML = '';
+      if (this.ui.viewGroup.hidden) return;
+
+      const fragment = document.createDocumentFragment();
+      views.forEach((view) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `lve-btn${view.viewCode === activeViewCode ? ' lve-btn-primary' : ''}`;
+        button.textContent = view.name || view.viewCode || 'View';
+        button.setAttribute('data-view-code', view.viewCode || '');
+        fragment.appendChild(button);
+      });
+      this.ui.viewGroup.appendChild(fragment);
+    }
+
+    getSelectedContextKey() {
+      const selectedBar = this.barById.get(this.selectedBarId);
+      if (selectedBar?.contextKey) return selectedBar.contextKey;
+      return (this.payload?.setup || {}).focusContextKey || '';
+    }
+
+    indexBars(bars) {
+      this.barMapByRow.clear();
+      this.barByDependencyKey.clear();
+      this.barById.clear();
+
+      bars.forEach((bar) => {
+        if (!this.barMapByRow.has(bar.rowId)) this.barMapByRow.set(bar.rowId, []);
+        this.barMapByRow.get(bar.rowId).push(bar);
+        if (bar.barId) this.barById.set(bar.barId, bar);
+        if (bar.dependencyKey) this.barByDependencyKey.set(bar.dependencyKey, bar);
+      });
+    }
+
+    computeVisibleRows(rows) {
+      this.childRowsByParent.clear();
+      const roots = [];
+
+      rows.forEach((row) => {
+        const parentId = row.parentRowId || '';
+        if (!parentId) {
+          roots.push(row);
+          return;
+        }
+        if (!this.childRowsByParent.has(parentId)) this.childRowsByParent.set(parentId, []);
+        this.childRowsByParent.get(parentId).push(row);
+      });
+
+      this.visibleRows = [];
+      const walk = (row) => {
+        this.visibleRows.push(row);
+        const children = this.childRowsByParent.get(row.rowId) || [];
+        if (!children.length || !row.hasChildren || !this.expandedRows.has(row.rowId)) return;
+        children.forEach(walk);
+      };
+
+      roots.forEach(walk);
+    }
+
+    buildDerivedCaches() {
+      this.rowIndexById.clear();
+      this.mappingLineMetaByNo.clear();
+      this.conflictingBarIds.clear();
+      this.rowsWithConflict.clear();
+
+      this.visibleRows.forEach((row, index) => {
+        this.rowIndexById.set(row.rowId, index);
+      });
+
+      const payloadMappings = this.payload?.mappingLines || [];
+      payloadMappings.forEach((line) => {
+        this.mappingLineMetaByNo.set(line.lineNo, line);
+      });
+
+      this.precomputeConflicts();
+    }
+
+    precomputeConflicts() {
+      if ((this.payload?.setup || {}).enableConflictDetection === false) return;
+      const groups = new Map();
+
+      this.visibleRows.forEach((row) => {
+        const bars = this.barMapByRow.get(row.rowId) || [];
+        bars.forEach((bar) => {
+          const key = bar.conflictGroupKey || row.conflictGroupKey || row.rowId;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push({ rowId: row.rowId, bar });
+        });
+      });
+
+      groups.forEach((items) => {
+        items.sort((a, b) => {
+          const aStart = toDate(a.bar.start)?.getTime() || 0;
+          const bStart = toDate(b.bar.start)?.getTime() || 0;
+          return aStart - bStart;
+        });
+
+        for (let i = 1; i < items.length; i += 1) {
+          const previous = items[i - 1];
+          const current = items[i];
+          const previousEnd = toDate(previous.bar.end)?.getTime() || 0;
+          const currentStart = toDate(current.bar.start)?.getTime() || 0;
+          if (currentStart < previousEnd) {
+            this.conflictingBarIds.add(previous.bar.barId);
+            this.conflictingBarIds.add(current.bar.barId);
+            this.rowsWithConflict.add(previous.rowId);
+            this.rowsWithConflict.add(current.rowId);
+          }
+        }
+      });
+    }
+
+    computeTimeline() {
+      const bars = this.payload?.bars || [];
+      let rangeStart = toDate(this.payload?.rangeStart);
+      let rangeEnd = toDate(this.payload?.rangeEnd);
+
+      if (!rangeStart || !rangeEnd) {
+        bars.forEach((bar) => {
+          const start = toDate(bar.start);
+          const end = toDate(bar.end);
+          if (!start || !end) return;
+          if (!rangeStart || start < rangeStart) rangeStart = start;
+          if (!rangeEnd || end > rangeEnd) rangeEnd = end;
+        });
+      }
+
+      if (!rangeStart || !rangeEnd) {
+        const today = startOfDay(new Date());
+        rangeStart = addDays(today, -7);
+        rangeEnd = addDays(today, 30);
+      }
+
+      this.effectiveTimeGrain = this.normalizeTimeGrain(this.timeGrain);
+      const alignedStart = this.alignDateToGrain(rangeStart, this.effectiveTimeGrain);
+      let cursor = new Date(alignedStart.getTime());
+      const alignedEnd = this.advanceDateByGrain(rangeEnd, this.effectiveTimeGrain, 1);
+      const columns = [];
+      let totalWidth = 0;
+
+      while (cursor < alignedEnd) {
+        const next = this.advanceDateByGrain(cursor, this.effectiveTimeGrain, 1);
+        const width = this.getColumnWidth(this.effectiveTimeGrain);
+        columns.push({ start: new Date(cursor.getTime()), end: new Date(next.getTime()), width });
+        totalWidth += width;
+        cursor = next;
+      }
+
+      this.timelineCols = columns;
+      this.timelineStart = alignedStart;
+      this.timelineEnd = alignedEnd;
+      const visibleWidth = Math.max(320, this.ui.scrollBody?.clientWidth || 0);
+      this.totalTimelineWidth = Math.max(totalWidth, visibleWidth);
+      if (columns.length && totalWidth !== this.totalTimelineWidth) {
+        const scale = this.totalTimelineWidth / totalWidth;
+        this.timelineCols = columns.map((col) => ({ ...col, width: col.width * scale }));
+      }
+    }
+
+    getColumnWidth(grain) {
+      const zoomFactor = this.zoom / 100;
+      switch (grain) {
+        case 'Week':
+          return 96 * zoomFactor;
+        case 'Month':
+          return 140 * zoomFactor;
+        case 'Year':
+          return 180 * zoomFactor;
+        case 'Day':
+        default:
+          return 32 * zoomFactor;
+      }
+    }
+
+    alignDateToGrain(date, grain) {
+      switch (grain) {
+        case 'Week':
+          return startOfWeek(date);
+        case 'Month':
+          return startOfMonth(date);
+        case 'Year':
+          return startOfYear(date);
+        case 'Day':
+        default:
+          return startOfDay(date);
+      }
+    }
+
+    advanceDateByGrain(date, grain, amount) {
+      switch (grain) {
+        case 'Week':
+          return addDays(startOfWeek(date), amount * 7);
+        case 'Month':
+          return addMonths(startOfMonth(date), amount);
+        case 'Year':
+          return addYears(startOfYear(date), amount);
+        case 'Day':
+        default:
+          return addDays(startOfDay(date), amount);
+      }
+    }
+
+    getTopBandMeta(col) {
+      const date = col.start;
+      switch (this.effectiveTimeGrain) {
+        case 'Week':
+        case 'Day':
+          return {
+            key: `${date.getFullYear()}-${date.getMonth()}`,
+            label: date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+          };
+        case 'Month':
+          return {
+            key: `${date.getFullYear()}`,
+            label: String(date.getFullYear())
+          };
+        case 'Year':
+        default:
+          return {
+            key: `${Math.floor(date.getFullYear() / 10) * 10}`,
+            label: `${Math.floor(date.getFullYear() / 10) * 10}s`
+          };
+      }
+    }
+
+    getBottomBandLabel(col) {
+      const date = col.start;
+      switch (this.effectiveTimeGrain) {
+        case 'Week':
+          return `W${getIsoWeek(date)}`;
+        case 'Month':
+          return date.toLocaleDateString(undefined, { month: 'short' });
+        case 'Year':
+          return String(date.getFullYear());
+        case 'Day':
+        default:
+          return date.toLocaleDateString(undefined, { day: 'numeric' });
+      }
+    }
+
+    isWeekendColumn(col) {
+      if (this.effectiveTimeGrain !== 'Day') return false;
+      const day = col.start.getDay();
+      return day === 0 || day === 6;
+    }
+
+    isPrimaryBoundary(col) {
+      const date = col.start;
+      switch (this.effectiveTimeGrain) {
+        case 'Week':
+        case 'Day':
+          return date.getDate() === 1;
+        case 'Month':
+          return date.getMonth() === 0;
+        case 'Year':
+        default:
+          return date.getFullYear() % 10 === 0;
+      }
     }
 
     renderTimelineHeader() {
@@ -283,13 +661,35 @@
     renderRowsAndGrid() {
       this.viewportWidth = this.totalTimelineWidth;
       this.totalContentHeight = this.visibleRows.length * this.rowHeight;
+      const headHeight = this.ui.timelineHead.offsetHeight || 52;
 
       this.ui.labelPane.innerHTML = '';
+      this.ui.labelPane.style.display = 'flex';
+      this.ui.labelPane.style.flexDirection = 'column';
+      this.ui.labelPane.style.minHeight = '0';
+
+      const labelHead = document.createElement('div');
+      labelHead.style.flex = '0 0 auto';
+      labelHead.style.height = `${headHeight}px`;
+      labelHead.style.borderBottom = '1px solid var(--gantt-border)';
+      labelHead.style.background = '#fff';
+
+      const labelViewport = document.createElement('div');
+      labelViewport.style.position = 'relative';
+      labelViewport.style.overflow = 'hidden';
+      labelViewport.style.flex = '1 1 auto';
+      labelViewport.style.minHeight = '0';
+
       const labelSurface = document.createElement('div');
       labelSurface.style.position = 'relative';
       labelSurface.style.height = `${this.totalContentHeight}px`;
       labelSurface.style.minHeight = `${this.totalContentHeight}px`;
-      this.ui.labelPane.appendChild(labelSurface);
+      labelViewport.appendChild(labelSurface);
+
+      this.ui.labelPane.appendChild(labelHead);
+      this.ui.labelPane.appendChild(labelViewport);
+      this.ui.labelHead = labelHead;
+      this.ui.labelViewport = labelViewport;
       this.ui.labelSurface = labelSurface;
 
       this.ui.gridCanvas.innerHTML = '';
@@ -337,7 +737,7 @@
 
       const today = new Date();
       const todayX = this.dateToX(today);
-      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      const todayStart = startOfDay(today);
 
       this.timelineCols.forEach((col) => {
         const x = this.dateToX(col.start);
@@ -370,6 +770,22 @@
       bg.appendChild(todayLine);
     }
 
+    syncLabelViewport() {
+      if (!this.ui.labelSurface || !this.ui.scrollBody) return;
+      this.ui.labelSurface.style.transform = `translateY(${-this.ui.scrollBody.scrollTop}px)`;
+    }
+
+    getViewportRowRange() {
+      const scrollTop = this.ui.scrollBody?.scrollTop || 0;
+      const viewportHeight = this.ui.scrollBody?.clientHeight || 0;
+      const start = Math.max(0, Math.floor(scrollTop / this.rowHeight) - this.rowOverscan);
+      const end = Math.min(
+        this.visibleRows.length,
+        Math.ceil((scrollTop + viewportHeight) / this.rowHeight) + this.rowOverscan
+      );
+      return { start, end };
+    }
+
     renderViewport() {
       if (!this.ui.labelSurface || !this.ui.gridRowLayer || !this.ui.gridBarLayer || !this.ui.dependencyLayer) return;
 
@@ -383,6 +799,7 @@
       this.renderBars(range.start, range.end);
       this.renderDependencies(range.start, range.end);
       this.renderConflicts();
+      this.syncLabelViewport();
     }
 
     renderVisibleRows(startIndex, endIndex) {
@@ -405,8 +822,9 @@
         labelRow.dataset.rowId = row.rowId;
 
         const expander = document.createElement('button');
+        expander.type = 'button';
         expander.className = 'row-expander';
-        expander.textContent = row.hasChildren ? (this.expandedRows.has(row.rowId) || row.isExpanded ? '▾' : '▸') : '•';
+        expander.textContent = row.hasChildren ? (this.expandedRows.has(row.rowId) ? '▾' : '▸') : '•';
         expander.disabled = !row.hasChildren;
         expander.addEventListener('click', () => {
           if (!row.hasChildren) return;
@@ -418,7 +836,15 @@
 
         const textWrap = document.createElement('div');
         textWrap.className = 'row-text-wrap';
-        textWrap.innerHTML = `<div class="key">${row.keyText || ''}</div><div class="desc">${row.descriptionText || ''}</div>`;
+        const key = document.createElement('div');
+        key.className = 'key';
+        key.textContent = row.keyText || '';
+        const desc = document.createElement('div');
+        desc.className = 'desc';
+        desc.textContent = row.descriptionText || '';
+        textWrap.appendChild(key);
+        textWrap.appendChild(desc);
+
         labelRow.appendChild(expander);
         labelRow.appendChild(textWrap);
         this.addTooltipHandlers(labelRow, row.tooltipTitle, row.tooltipFields);
@@ -446,6 +872,7 @@
           const start = toDate(bar.start);
           const end = toDate(bar.end);
           if (!start || !end) return;
+
           const xStart = this.dateToX(start);
           const xEnd = this.dateToX(end);
           const width = Math.max(6, xEnd - xStart);
@@ -490,7 +917,6 @@
             invoke('BarClicked', [bar.sourceTableId || 0, bar.sourceRecordId || '', bar.barId || '', bar.pageId || 0]);
           });
           this.addTooltipHandlers(barEl, bar.tooltipTitle || bar.label, row.tooltipFields || []);
-
           fragment.appendChild(barEl);
         });
       }
@@ -499,9 +925,12 @@
     }
 
     renderDependencies(startIndex, endIndex) {
+      if ((this.payload?.setup || {}).enableDependencies === false) return;
+      if ((this.payload?.activeView || {}).dependencyEnabled === false) return;
+
       const deps = this.payload.dependencies || [];
       const svg = this.ui.dependencyLayer;
-      svg.setAttribute('width', String(this.viewportWidth));
+      svg.setAttribute('width', String(this.totalTimelineWidth));
       svg.setAttribute('height', String(this.totalContentHeight));
 
       const visibleRowIds = new Set();
@@ -511,7 +940,7 @@
       }
 
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-      marker.setAttribute('id', 'lve-arrow');
+      marker.setAttribute('id', 'dgog-arrow');
       marker.setAttribute('markerWidth', '8');
       marker.setAttribute('markerHeight', '8');
       marker.setAttribute('refX', '6');
@@ -550,7 +979,7 @@
         arrow.setAttribute('fill', 'none');
         arrow.setAttribute('stroke', '#60728a');
         arrow.setAttribute('stroke-width', '1.2');
-        arrow.setAttribute('marker-end', 'url(#lve-arrow)');
+        arrow.setAttribute('marker-end', 'url(#dgog-arrow)');
         svg.appendChild(arrow);
       });
     }
@@ -560,8 +989,8 @@
     }
 
     renderConflicts() {
-      this.ui.labelSurface.querySelectorAll('.lve-label-row').forEach((el) => {
-        el.classList.toggle('has-conflict', this.rowsWithConflict.has(el.dataset.rowId));
+      this.ui.labelSurface.querySelectorAll('.lve-label-row').forEach((element) => {
+        element.classList.toggle('has-conflict', this.rowsWithConflict.has(element.dataset.rowId));
       });
     }
 
@@ -645,8 +1074,8 @@
       bar.start = state.newStart.toISOString();
       bar.end = state.newEnd.toISOString();
 
-      this.addPendingChange(bar, 'start', oldStart, bar.start, (this.payload.setup || {}).setupId);
-      this.addPendingChange(bar, 'end', oldEnd, bar.end, (this.payload.setup || {}).setupId);
+      this.addPendingChange(bar, 'start', oldStart, bar.start);
+      this.addPendingChange(bar, 'end', oldEnd, bar.end);
       this.renderViewport();
       this.renderMiniMap();
       this.log('Interaction', 'info', 'Drag end', { barId: bar.barId });
@@ -683,7 +1112,8 @@
     }
 
     renderDirtyState() {
-      this.ui.saveButton.disabled = !this.dirty;
+      const allowSave = (this.payload?.setup || {}).allowSave !== false;
+      this.ui.saveButton.disabled = !this.dirty || !allowSave;
       this.ui.dirtyIndicator.hidden = !this.dirty;
       if (this.dirty) {
         this.ui.dirtyIndicator.textContent = `${this.pendingChanges.length} unsaved change(s)`;
@@ -706,7 +1136,7 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const scale = canvas.width / this.viewportWidth;
-      this.visibleRows.forEach((row, idx) => {
+      this.visibleRows.forEach((row, index) => {
         const bars = this.barMapByRow.get(row.rowId) || [];
         bars.forEach((bar) => {
           const start = toDate(bar.start);
@@ -714,7 +1144,7 @@
           if (!start || !end) return;
           const x = this.dateToX(start) * scale;
           const w = Math.max(1, (this.dateToX(end) - this.dateToX(start)) * scale);
-          const y = (idx % 20) * 2;
+          const y = (index % 20) * 2;
           ctx.fillStyle = bar.color || '#5a7fb0';
           ctx.fillRect(x, y, w, 1.5);
         });
@@ -735,9 +1165,9 @@
     addTooltipHandlers(element, title, fields) {
       element.addEventListener('mouseenter', (event) => {
         const parts = [];
-        if (title) parts.push(`<div class="title">${title}</div>`);
+        if (title) parts.push(`<div class="title">${escapeHtml(title)}</div>`);
         (fields || []).forEach((field) => {
-          parts.push(`<div class="line"><span>${field.caption || ''}</span><strong>${field.value || ''}</strong></div>`);
+          parts.push(`<div class="line"><span>${escapeHtml(field.caption || '')}</span><strong>${escapeHtml(field.value || '')}</strong></div>`);
         });
         if (!parts.length) return;
         this.hoverTooltip.innerHTML = parts.join('');
@@ -763,7 +1193,7 @@
     }
 
     dateToX(dateObj) {
-      if (!dateObj) return 0;
+      if (!dateObj || !this.timelineStart || !this.timelineEnd) return 0;
       const startMs = this.timelineStart.getTime();
       const endMs = this.timelineEnd.getTime();
       const ratio = (dateObj.getTime() - startMs) / Math.max(1, endMs - startMs);

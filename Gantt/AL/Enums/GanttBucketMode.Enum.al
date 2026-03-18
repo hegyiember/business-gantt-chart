@@ -1,4 +1,4 @@
-enum 71891725 "LVE Gantt Bucket Mode"
+enum 71891725 "DGOG Gantt Bucket Mode"
 {
     Extensible = true;
     Caption = 'Gantt Bucket Mode';
