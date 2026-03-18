@@ -116,6 +116,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
     var
         MappingLine: Record "DGOG Gantt Mapping Line";
         AddedDependencyIds: Dictionary of [Text, Boolean];
+        VisibleBarKeys: Dictionary of [Text, Boolean];
         DummyParentSourceRef: RecordRef;
     begin
         RangeStart := CreateDateTime(CalcDate('<-7D>', WorkDate()), 0T);
@@ -123,7 +124,8 @@ codeunit 71891733 "DGOG Gantt Data Builder"
 
         if GanttView."Root Mapping Line No." <> 0 then begin
             if MappingLine.Get(GanttSetup."ID", GanttView."View Code", GanttView."Root Mapping Line No.") then
-                AppendRecordsForMapping(GanttSetup, GanttView, MappingLine, DummyParentSourceRef, '', 0, RowsJson, BarsJson, DependenciesJson, RangeStart, RangeEnd, AddedDependencyIds);
+                AppendRecordsForMapping(GanttSetup, GanttView, MappingLine, DummyParentSourceRef, '', 0, RowsJson, BarsJson, RangeStart, RangeEnd, VisibleBarKeys);
+            BuildDependenciesForView(GanttView, DependenciesJson, AddedDependencyIds, VisibleBarKeys);
             exit;
         end;
 
@@ -134,21 +136,22 @@ codeunit 71891733 "DGOG Gantt Data Builder"
             exit;
 
         repeat
-            AppendRecordsForMapping(GanttSetup, GanttView, MappingLine, DummyParentSourceRef, '', 0, RowsJson, BarsJson, DependenciesJson, RangeStart, RangeEnd, AddedDependencyIds);
+            AppendRecordsForMapping(GanttSetup, GanttView, MappingLine, DummyParentSourceRef, '', 0, RowsJson, BarsJson, RangeStart, RangeEnd, VisibleBarKeys);
         until MappingLine.Next() = 0;
+
+        BuildDependenciesForView(GanttView, DependenciesJson, AddedDependencyIds, VisibleBarKeys);
     end;
 
-    local procedure AppendRecordsForMapping(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; MappingLine: Record "DGOG Gantt Mapping Line"; ParentSourceRef: RecordRef; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime; var AddedDependencyIds: Dictionary of [Text, Boolean])
+    local procedure AppendRecordsForMapping(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; MappingLine: Record "DGOG Gantt Mapping Line"; ParentSourceRef: RecordRef; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime; var VisibleBarKeys: Dictionary of [Text, Boolean])
     var
         SourceRef: RecordRef;
         RowJson: JsonObject;
         BarJson: JsonObject;
-        DependencyJson: JsonObject;
         CurrentRowId: Text;
+        CurrentDependencyKey: Text;
         HasChildren: Boolean;
         StartValue: DateTime;
         EndValue: DateTime;
-        DependencyId: Text;
     begin
         SourceRef.Open(MappingLine."Source Table ID");
         if not ApplyParentFieldFilters(SourceRef, MappingLine, ParentSourceRef) then
@@ -171,25 +174,19 @@ codeunit 71891733 "DGOG Gantt Data Builder"
                 if StartValue <> 0DT then begin
                     BarsJson.Add(BarJson);
                     UpdateRange(StartValue, EndValue, RangeStart, RangeEnd);
+                    CurrentDependencyKey := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Key Field ID");
+                    if CurrentDependencyKey <> '' then
+                        if not VisibleBarKeys.ContainsKey(GetVisibleDependencyKey(MappingLine."Line No.", CurrentDependencyKey)) then
+                            VisibleBarKeys.Add(GetVisibleDependencyKey(MappingLine."Line No.", CurrentDependencyKey), true);
                 end;
             end;
 
-            if HasDependency(MappingLine) then begin
-                Clear(DependencyJson);
-                Clear(DependencyId);
-                if BuildDependencyJson(SourceRef, MappingLine, CurrentRowId, DependencyJson, DependencyId) then
-                    if not AddedDependencyIds.ContainsKey(DependencyId) then begin
-                        DependenciesJson.Add(DependencyJson);
-                        AddedDependencyIds.Add(DependencyId, true);
-                    end;
-            end;
-
             if HasChildren then
-                AppendChildMappings(GanttSetup, GanttView, MappingLine."Line No.", SourceRef, CurrentRowId, Level + 1, RowsJson, BarsJson, DependenciesJson, RangeStart, RangeEnd, AddedDependencyIds);
+                AppendChildMappings(GanttSetup, GanttView, MappingLine."Line No.", SourceRef, CurrentRowId, Level + 1, RowsJson, BarsJson, RangeStart, RangeEnd, VisibleBarKeys);
         until SourceRef.Next() = 0;
     end;
 
-    local procedure AppendChildMappings(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; ParentLineNo: Integer; ParentSourceRef: RecordRef; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime; var AddedDependencyIds: Dictionary of [Text, Boolean])
+    local procedure AppendChildMappings(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; ParentLineNo: Integer; ParentSourceRef: RecordRef; ParentRowId: Text; Level: Integer; var RowsJson: JsonArray; var BarsJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime; var VisibleBarKeys: Dictionary of [Text, Boolean])
     var
         ChildMapping: Record "DGOG Gantt Mapping Line";
     begin
@@ -200,7 +197,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
             exit;
 
         repeat
-            AppendRecordsForMapping(GanttSetup, GanttView, ChildMapping, ParentSourceRef, ParentRowId, Level, RowsJson, BarsJson, DependenciesJson, RangeStart, RangeEnd, AddedDependencyIds);
+            AppendRecordsForMapping(GanttSetup, GanttView, ChildMapping, ParentSourceRef, ParentRowId, Level, RowsJson, BarsJson, RangeStart, RangeEnd, VisibleBarKeys);
         until ChildMapping.Next() = 0;
     end;
 
@@ -284,29 +281,139 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         BarJson.Add('depth', Level);
     end;
 
-    local procedure BuildDependencyJson(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; RowId: Text; var DependencyJson: JsonObject; var DependencyId: Text): Boolean
+    local procedure BuildDependenciesForView(GanttView: Record "DGOG Gantt View"; var DependenciesJson: JsonArray; var AddedDependencyIds: Dictionary of [Text, Boolean]; VisibleBarKeys: Dictionary of [Text, Boolean])
     var
-        CurrentKey: Text;
-        RelatedKey: Text;
-        SourceKey: Text;
-        TargetKey: Text;
+        MappingLine: Record "DGOG Gantt Mapping Line";
     begin
-        CurrentKey := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Key Field ID");
-        RelatedKey := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Dependency Target Field ID");
-        if (CurrentKey = '') or (RelatedKey = '') or (CurrentKey = RelatedKey) then
+        MappingLine.SetRange("Setup ID", GanttView."Setup ID");
+        MappingLine.SetRange("View Code", GanttView."View Code");
+        if not MappingLine.FindSet() then
+            exit;
+
+        repeat
+            if HasDependency(MappingLine) then
+                BuildDependenciesForMapping(GanttView."View Code", MappingLine, DependenciesJson, AddedDependencyIds, VisibleBarKeys);
+        until MappingLine.Next() = 0;
+    end;
+
+    local procedure BuildDependenciesForMapping(ViewCode: Code[20]; MappingLine: Record "DGOG Gantt Mapping Line"; var DependenciesJson: JsonArray; var AddedDependencyIds: Dictionary of [Text, Boolean]; VisibleBarKeys: Dictionary of [Text, Boolean])
+    var
+        SourceRef: RecordRef;
+        DependencyJson: JsonObject;
+        DependencyId: Text;
+        CurrentKey: Text;
+        GroupValue: Text;
+        OrderValue: Text;
+        NextKey: Text;
+    begin
+        SourceRef.Open(MappingLine."Source Table ID");
+        if not SourceRef.FindSet() then
+            exit;
+
+        repeat
+            CurrentKey := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Key Field ID");
+            if IsVisibleDependencyKey(MappingLine."Line No.", CurrentKey, VisibleBarKeys) then begin
+                GroupValue := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Dependency Target Field ID");
+                OrderValue := ValidationHelper.GetFieldValueAsIso(SourceRef, MappingLine."Dependency Order Field ID");
+                if (GroupValue <> '') and (OrderValue <> '') then
+                    if IsUniqueDependencyOrder(MappingLine, GroupValue, OrderValue, VisibleBarKeys) then
+                        if FindImmediateNextDependencyKey(MappingLine, GroupValue, OrderValue, SourceRef.RecordId, VisibleBarKeys, NextKey) then
+                            if (NextKey <> '') and (CurrentKey <> NextKey) then begin
+                                Clear(DependencyJson);
+                                DependencyId := StrSubstNo('%1|%2|%3', MappingLine."Line No.", CurrentKey, NextKey);
+                                if not AddedDependencyIds.ContainsKey(DependencyId) then begin
+                                    DependencyJson.Add('dependencyId', DependencyId);
+                                    DependencyJson.Add('rowId', GetStableRowId(ViewCode, MappingLine."Line No.", SourceRef.RecordId));
+                                    DependencyJson.Add('mappingLineNo', MappingLine."Line No.");
+                                    DependencyJson.Add('sourceKey', CurrentKey);
+                                    DependencyJson.Add('targetKey', NextKey);
+                                    DependencyJson.Add('type', 'FS');
+                                    DependencyJson.Add('sourceRecordId', Format(SourceRef.RecordId));
+                                    DependenciesJson.Add(DependencyJson);
+                                    AddedDependencyIds.Add(DependencyId, true);
+                                end;
+                            end;
+            end;
+        until SourceRef.Next() = 0;
+    end;
+
+    local procedure FindImmediateNextDependencyKey(MappingLine: Record "DGOG Gantt Mapping Line"; GroupValue: Text; OrderValue: Text; CurrentRecordId: RecordId; VisibleBarKeys: Dictionary of [Text, Boolean]; var NextKey: Text): Boolean
+    var
+        SearchRef: RecordRef;
+        CandidateKey: Text;
+        CandidateGroupValue: Text;
+        CandidateOrderValue: Text;
+        BestOrderValue: Text;
+    begin
+        Clear(NextKey);
+        SearchRef.Open(MappingLine."Source Table ID");
+        if not SearchRef.FindSet() then
             exit(false);
 
-        OrderDependencyKeys(CurrentKey, RelatedKey, SourceKey, TargetKey);
-        DependencyId := StrSubstNo('%1|%2|%3', MappingLine."Line No.", SourceKey, TargetKey);
+        repeat
+            CandidateKey := ValidationHelper.GetFieldValueAsText(SearchRef, MappingLine."Key Field ID");
+            if (SearchRef.RecordId <> CurrentRecordId) and IsVisibleDependencyKey(MappingLine."Line No.", CandidateKey, VisibleBarKeys) then begin
+                CandidateGroupValue := ValidationHelper.GetFieldValueAsText(SearchRef, MappingLine."Dependency Target Field ID");
+                CandidateOrderValue := ValidationHelper.GetFieldValueAsIso(SearchRef, MappingLine."Dependency Order Field ID");
+                if (CandidateGroupValue = GroupValue) and (CandidateOrderValue <> '') and (CandidateKey <> '') then
+                    if CompareSortableValues(OrderValue, CandidateOrderValue) < 0 then
+                        if IsUniqueDependencyOrder(MappingLine, GroupValue, CandidateOrderValue, VisibleBarKeys) then
+                            if (BestOrderValue = '') or (CompareSortableValues(CandidateOrderValue, BestOrderValue) < 0) then begin
+                                BestOrderValue := CandidateOrderValue;
+                                NextKey := CandidateKey;
+                            end;
+            end;
+        until SearchRef.Next() = 0;
 
-        DependencyJson.Add('dependencyId', DependencyId);
-        DependencyJson.Add('rowId', RowId);
-        DependencyJson.Add('mappingLineNo', MappingLine."Line No.");
-        DependencyJson.Add('sourceKey', SourceKey);
-        DependencyJson.Add('targetKey', TargetKey);
-        DependencyJson.Add('type', 'FS');
-        DependencyJson.Add('sourceRecordId', Format(SourceRef.RecordId));
-        exit(true);
+        exit(NextKey <> '');
+    end;
+
+    local procedure IsUniqueDependencyOrder(MappingLine: Record "DGOG Gantt Mapping Line"; GroupValue: Text; OrderValue: Text; VisibleBarKeys: Dictionary of [Text, Boolean]): Boolean
+    var
+        SearchRef: RecordRef;
+        CandidateKey: Text;
+        MatchCount: Integer;
+    begin
+        SearchRef.Open(MappingLine."Source Table ID");
+        if not SearchRef.FindSet() then
+            exit(false);
+
+        repeat
+            CandidateKey := ValidationHelper.GetFieldValueAsText(SearchRef, MappingLine."Key Field ID");
+            if IsVisibleDependencyKey(MappingLine."Line No.", CandidateKey, VisibleBarKeys) then
+                if ValidationHelper.GetFieldValueAsText(SearchRef, MappingLine."Dependency Target Field ID") = GroupValue then
+                    if ValidationHelper.GetFieldValueAsIso(SearchRef, MappingLine."Dependency Order Field ID") = OrderValue then begin
+                        MatchCount += 1;
+                        if MatchCount > 1 then
+                            exit(false);
+                    end;
+        until SearchRef.Next() = 0;
+
+        exit(MatchCount = 1);
+    end;
+
+    local procedure CompareSortableValues(FirstValue: Text; SecondValue: Text): Integer
+    var
+        FirstNumber: Decimal;
+        SecondNumber: Decimal;
+        FirstComparableValue: Text;
+        SecondComparableValue: Text;
+    begin
+        if Evaluate(FirstNumber, FirstValue) and Evaluate(SecondNumber, SecondValue) then begin
+            if FirstNumber < SecondNumber then
+                exit(-1);
+            if FirstNumber > SecondNumber then
+                exit(1);
+            exit(0);
+        end;
+
+        FirstComparableValue := UpperCase(FirstValue);
+        SecondComparableValue := UpperCase(SecondValue);
+        if FirstComparableValue < SecondComparableValue then
+            exit(-1);
+        if FirstComparableValue > SecondComparableValue then
+            exit(1);
+        exit(0);
     end;
 
     local procedure ApplyParentFieldFilters(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; ParentSourceRef: RecordRef): Boolean
@@ -333,26 +440,17 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         exit(true);
     end;
 
-    local procedure OrderDependencyKeys(FirstKey: Text; SecondKey: Text; var SourceKey: Text; var TargetKey: Text)
+    local procedure GetVisibleDependencyKey(MappingLineNo: Integer; DependencyKey: Text): Text
     begin
-        if IsFirstDependencyKeySmallerOrEqual(FirstKey, SecondKey) then begin
-            SourceKey := FirstKey;
-            TargetKey := SecondKey;
-        end else begin
-            SourceKey := SecondKey;
-            TargetKey := FirstKey;
-        end;
+        exit(StrSubstNo('%1|%2', MappingLineNo, DependencyKey));
     end;
 
-    local procedure IsFirstDependencyKeySmallerOrEqual(FirstKey: Text; SecondKey: Text): Boolean
-    var
-        FirstNumber: Decimal;
-        SecondNumber: Decimal;
+    local procedure IsVisibleDependencyKey(MappingLineNo: Integer; DependencyKey: Text; VisibleBarKeys: Dictionary of [Text, Boolean]): Boolean
     begin
-        if Evaluate(FirstNumber, FirstKey) and Evaluate(SecondNumber, SecondKey) then
-            exit(FirstNumber <= SecondNumber);
+        if DependencyKey = '' then
+            exit(false);
 
-        exit(UpperCase(FirstKey) <= UpperCase(SecondKey));
+        exit(VisibleBarKeys.ContainsKey(GetVisibleDependencyKey(MappingLineNo, DependencyKey)));
     end;
 
     local procedure BuildTooltipFields(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; var TooltipFields: JsonArray)
@@ -461,7 +559,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
 
     local procedure HasDependency(MappingLine: Record "DGOG Gantt Mapping Line"): Boolean
     begin
-        exit(MappingLine."Dependency Target Field ID" <> 0);
+        exit((MappingLine."Dependency Target Field ID" <> 0) and (MappingLine."Dependency Order Field ID" <> 0));
     end;
 
     local procedure UpdateRange(StartValue: DateTime; EndValue: DateTime; var RangeStart: DateTime; var RangeEnd: DateTime)

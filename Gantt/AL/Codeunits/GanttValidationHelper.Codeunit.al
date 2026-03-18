@@ -61,6 +61,7 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Context Identity Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Resource Group Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Dependency Target Field ID");
+        EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Dependency Order Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Aggregation Value Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Aggregation Capacity Field ID");
         EnsureFieldIfSpecified(MappingLine."Source Table ID", MappingLine."Conflict Group Field ID");

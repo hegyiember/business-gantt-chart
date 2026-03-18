@@ -98,7 +98,12 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                 field("Dependency Target Field ID"; Rec."Dependency Target Field ID")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the related task key field used for one-way dependency arrows.';
+                    ToolTip = 'Specifies Field A, which groups child elements for dependency generation across the grid.';
+                }
+                field("Dependency Order Field ID"; Rec."Dependency Order Field ID")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies Field B, which determines the immediate-next ascending dependency order within the same Field A group.';
                 }
                 field("Aggregation Value Field ID"; Rec."Aggregation Value Field ID")
                 {
