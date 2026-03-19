@@ -1127,12 +1127,19 @@
       defs.appendChild(marker);
       svg.appendChild(defs);
 
+      const resolvedDependencies = [];
       deps.forEach((dep) => {
         const sourceBar = this.barByDependencyKey.get(this.getDependencyLookupKey(dep.mappingLineNo, dep.sourceKey))
           || this.barByDependencyKey.get(dep.sourceKey);
         const targetBar = this.barByDependencyKey.get(this.getDependencyLookupKey(dep.mappingLineNo, dep.targetKey))
           || this.barByDependencyKey.get(dep.targetKey);
         if (!sourceBar || !targetBar) return;
+        resolvedDependencies.push({ dep, sourceBar, targetBar });
+      });
+
+      this.logDependencyDebugGroups(resolvedDependencies);
+
+      resolvedDependencies.forEach(({ sourceBar, targetBar }) => {
         if (!visibleRowIds.has(sourceBar.rowId) && !visibleRowIds.has(targetBar.rowId)) return;
 
         const sourceRowIndex = this.rowIndexById.get(sourceBar.rowId);
@@ -1157,6 +1164,55 @@
         arrow.setAttribute('marker-end', 'url(#dgog-arrow)');
         svg.appendChild(arrow);
       });
+    }
+
+    logDependencyDebugGroups(resolvedDependencies) {
+      const signature = resolvedDependencies
+        .map(({ dep, sourceBar, targetBar }) => `${dep.mappingLineNo || 0}:${sourceBar.barId || sourceBar.dependencyKey}->${targetBar.barId || targetBar.dependencyKey}`)
+        .join('|');
+      if (signature === this.lastDependencyDebugSignature) return;
+      this.lastDependencyDebugSignature = signature;
+
+      const rowsById = new Map((this.payload?.rows || []).map((row) => [row.rowId, row]));
+      const groups = new Map();
+
+      resolvedDependencies.forEach(({ dep, sourceBar, targetBar }) => {
+        const sourceRow = rowsById.get(sourceBar.rowId) || {};
+        const targetRow = rowsById.get(targetBar.rowId) || {};
+        const parentRowId = sourceRow.parentRowId || targetRow.parentRowId || sourceBar.rowId || targetBar.rowId || 'root';
+        const parentRow = rowsById.get(parentRowId) || {};
+        const groupKey = `${dep.mappingLineNo || 0}|${parentRowId}`;
+
+        if (!groups.has(groupKey)) {
+          groups.set(groupKey, {
+            mappingLineNo: dep.mappingLineNo || 0,
+            parentRowId,
+            parentLabel: parentRow.keyText || parentRow.descriptionText || parentRowId,
+            items: []
+          });
+        }
+
+        groups.get(groupKey).items.push({
+          from: sourceBar.label || sourceRow.keyText || sourceBar.barId || sourceBar.dependencyKey || '(source)',
+          to: targetBar.label || targetRow.keyText || targetBar.barId || targetBar.dependencyKey || '(target)',
+          sourceRowId: sourceBar.rowId,
+          targetRowId: targetBar.rowId,
+          sourceDependencyKey: sourceBar.dependencyKey || '',
+          targetDependencyKey: targetBar.dependencyKey || ''
+        });
+      });
+
+      console.groupCollapsed(`[GANTT][dependency-debug] ${resolvedDependencies.length} arrow candidate(s)`);
+      groups.forEach((group) => {
+        console.groupCollapsed(
+          `[GANTT][dependency-parent] mappingLine=${group.mappingLineNo} parent=${group.parentLabel} (${group.items.length})`
+        );
+        group.items.forEach((item) => {
+          console.log(`${item.from} -> ${item.to}`, item);
+        });
+        console.groupEnd();
+      });
+      console.groupEnd();
     }
 
     hasConflict(bar) {
