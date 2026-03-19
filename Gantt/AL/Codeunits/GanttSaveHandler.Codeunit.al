@@ -24,16 +24,13 @@ codeunit 71891734 "DGOG Gantt Save Handler"
         SourceTableId: Integer;
         FieldId: Integer;
         SourceRecordIdText: Text;
-        OldValueText: Text;
         NewValueText: Text;
         SourceRecordId: RecordId;
         SourceRef: RecordRef;
-        CurrentValueText: Text;
     begin
         SourceTableId := GetInteger(ChangeObject, 'sourceTableId');
         FieldId := GetInteger(ChangeObject, 'fieldId');
         SourceRecordIdText := GetText(ChangeObject, 'sourceRecordId');
-        OldValueText := GetText(ChangeObject, 'oldValue');
         NewValueText := GetText(ChangeObject, 'newValue');
 
         if (SourceTableId = 0) or (FieldId = 0) or (SourceRecordIdText = '') then
@@ -46,10 +43,6 @@ codeunit 71891734 "DGOG Gantt Save Handler"
         SourceRef.Open(SourceTableId);
         if not SourceRef.Get(SourceRecordId) then
             Error('Source record %1 was not found in table %2.', SourceRecordIdText, SourceTableId);
-
-        CurrentValueText := ValidationHelper.GetFieldValueAsText(SourceRef, FieldId);
-        if (OldValueText <> '') and (CurrentValueText <> OldValueText) then
-            Error('Source record %1 changed before save. Current value %2 does not match expected value %3.', SourceRecordIdText, CurrentValueText, OldValueText);
 
         ValidationHelper.SetFieldFromText(SourceRef, FieldId, NewValueText);
         SourceRef.Modify(true);
