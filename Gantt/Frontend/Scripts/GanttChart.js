@@ -248,6 +248,7 @@
     load(payload) {
       const previousExpandedRows = new Set(this.expandedRows);
       const preserveExpandedState = !!this.payload;
+      const previousViewState = preserveExpandedState ? this.captureViewState() : null;
 
       this.payload = payload || {};
       this.pendingChanges = [];
@@ -257,11 +258,16 @@
       this.dragState = null;
 
       const setup = this.payload.setup || {};
-      this.timeGrain = this.normalizeTimeGrain(setup.defaultTimeGrain || this.timeGrain);
-      this.zoom = clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
+      this.timeGrain = preserveExpandedState
+        ? this.normalizeTimeGrain(previousViewState?.timeGrain || this.timeGrain)
+        : this.normalizeTimeGrain(setup.defaultTimeGrain || this.timeGrain);
+      this.zoom = preserveExpandedState
+        ? clamp(Math.round(Number(previousViewState?.zoom || this.zoom) / 10) * 10, 30, 400)
+        : clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
       this.seedExpandedRows(previousExpandedRows, preserveExpandedState);
       this.render();
+      if (preserveExpandedState) this.restoreViewState(previousViewState);
     }
 
     seedExpandedRows(previousExpandedRows, preserveExpandedState) {
@@ -318,6 +324,17 @@
       return this.xToDate(body.scrollLeft + body.clientWidth / 2);
     }
 
+    captureViewState() {
+      const body = this.ui.scrollBody;
+      return {
+        timeGrain: this.timeGrain,
+        zoom: this.zoom,
+        centerDate: this.getViewportCenterDate(),
+        scrollLeft: body?.scrollLeft || 0,
+        scrollTop: body?.scrollTop || 0
+      };
+    }
+
     restoreViewportCenter(centerDate) {
       const body = this.ui.scrollBody;
       if (!body || !centerDate || !this.timelineStart || !this.timelineEnd) {
@@ -326,6 +343,25 @@
       }
       const desiredScrollLeft = this.dateToX(centerDate) - body.clientWidth / 2;
       body.scrollLeft = clamp(desiredScrollLeft, 0, Math.max(0, this.totalTimelineWidth - body.clientWidth));
+      this.lastScrollLeft = body.scrollLeft;
+      this.syncTimelineHeaderPosition();
+      this.syncLabelViewport();
+      this.syncMiniMapViewport();
+    }
+
+    restoreViewState(viewState) {
+      const body = this.ui.scrollBody;
+      if (!body || !viewState) return;
+
+      const maxScrollTop = Math.max(0, this.totalContentHeight - body.clientHeight);
+      body.scrollTop = clamp(viewState.scrollTop || 0, 0, maxScrollTop);
+
+      if (viewState.centerDate) {
+        this.restoreViewportCenter(viewState.centerDate);
+        return;
+      }
+
+      body.scrollLeft = clamp(viewState.scrollLeft || 0, 0, Math.max(0, this.totalTimelineWidth - body.clientWidth));
       this.lastScrollLeft = body.scrollLeft;
       this.syncTimelineHeaderPosition();
       this.syncLabelViewport();
@@ -1247,6 +1283,47 @@
       });
     }
 
+    getRowDebugLabel(row) {
+      const parts = [row?.keyText, row?.descriptionText].filter(Boolean);
+      return parts.join(' — ') || row?.tooltipTitle || row?.rowId || '(row)';
+    }
+
+    getRowDebugInfo(row) {
+      const tooltipFields = Array.isArray(row?.tooltipFields)
+        ? row.tooltipFields.map((field) => ({
+            caption: field?.caption || '',
+            value: field?.value || ''
+          }))
+        : [];
+
+      return {
+        rowId: row?.rowId || '',
+        parentRowId: row?.parentRowId || '',
+        level: row?.level || 0,
+        keyText: row?.keyText || '',
+        descriptionText: row?.descriptionText || '',
+        tooltipTitle: row?.tooltipTitle || '',
+        yLabel: this.getRowDebugLabel(row),
+        yLabelFields: tooltipFields
+      };
+    }
+
+    getBarDebugInfo(bar, row) {
+      return {
+        barId: bar?.barId || '',
+        label: bar?.label || '',
+        rowId: bar?.rowId || row?.rowId || '',
+        dependencyKey: bar?.dependencyKey || '',
+        mappingLineNo: bar?.mappingLineNo || 0,
+        sourceTableId: bar?.sourceTableId || 0,
+        sourceRecordId: bar?.sourceRecordId || '',
+        start: bar?.start || '',
+        end: bar?.end || '',
+        due: bar?.due || '',
+        yAxisContext: this.getRowDebugInfo(row)
+      };
+    }
+
     logDependencyDebugGroups(resolvedDependencies) {
       const signature = resolvedDependencies
         .map(({ dep, sourceBar, targetBar }) => `${dep.mappingLineNo || 0}:${sourceBar.barId || sourceBar.dependencyKey}->${targetBar.barId || targetBar.dependencyKey}`)
@@ -1267,29 +1344,36 @@
         if (!groups.has(groupKey)) {
           groups.set(groupKey, {
             mappingLineNo: dep.mappingLineNo || 0,
-            parentRowId,
-            parentLabel: parentRow.keyText || parentRow.descriptionText || parentRowId,
+            parent: this.getRowDebugInfo(parentRow),
             items: []
           });
         }
 
         groups.get(groupKey).items.push({
-          from: sourceBar.label || sourceRow.keyText || sourceBar.barId || sourceBar.dependencyKey || '(source)',
-          to: targetBar.label || targetRow.keyText || targetBar.barId || targetBar.dependencyKey || '(target)',
-          sourceRowId: sourceBar.rowId,
-          targetRowId: targetBar.rowId,
-          sourceDependencyKey: sourceBar.dependencyKey || '',
-          targetDependencyKey: targetBar.dependencyKey || ''
+          relation: {
+            mappingLineNo: dep.mappingLineNo || 0,
+            sourceKey: dep.sourceKey || '',
+            targetKey: dep.targetKey || ''
+          },
+          source: this.getBarDebugInfo(sourceBar, sourceRow),
+          target: this.getBarDebugInfo(targetBar, targetRow)
         });
       });
 
       console.groupCollapsed(`[GANTT][dependency-debug] ${resolvedDependencies.length} arrow candidate(s)`);
       groups.forEach((group) => {
         console.groupCollapsed(
-          `[GANTT][dependency-parent] mappingLine=${group.mappingLineNo} parent=${group.parentLabel} (${group.items.length})`
+          `[GANTT][dependency-parent] mappingLine=${group.mappingLineNo} parent=${group.parent.yLabel} (${group.items.length})`
         );
-        group.items.forEach((item) => {
-          console.log(`${item.from} -> ${item.to}`, item);
+        console.log('parent', group.parent);
+        group.items.forEach((item, index) => {
+          console.groupCollapsed(
+            `[GANTT][dependency-arrow ${index + 1}] ${item.source.yAxisContext.yLabel} -> ${item.target.yAxisContext.yLabel}`
+          );
+          console.log('relation', item.relation);
+          console.log('source', item.source);
+          console.log('target', item.target);
+          console.groupEnd();
         });
         console.groupEnd();
       });
