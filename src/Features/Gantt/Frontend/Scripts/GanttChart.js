@@ -1177,6 +1177,59 @@
       };
     }
 
+    createRowContentWrap(row, rowHeight) {
+      const wrap = document.createElement('div');
+      wrap.style.display = 'flex';
+      wrap.style.alignItems = 'center';
+      wrap.style.gap = '6px';
+      wrap.style.minWidth = '0';
+      wrap.style.width = '100%';
+      wrap.style.height = `${rowHeight}px`;
+      wrap.style.paddingLeft = `${Math.max(0, Number(row && row.level || 0) * 14)}px`;
+      wrap.style.paddingRight = '8px';
+
+      if (row && row.hasChildren) {
+        const expander = document.createElement('button');
+        expander.type = 'button';
+        expander.className = 'row-expander';
+        expander.textContent = this.expandedRows.has(row.rowId) ? '▾' : '▸';
+        expander.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (this.expandedRows.has(row.rowId)) this.expandedRows.delete(row.rowId);
+          else this.expandedRows.add(row.rowId);
+          this.render();
+        });
+        wrap.appendChild(expander);
+      } else {
+        const spacer = document.createElement('span');
+        spacer.style.display = 'inline-block';
+        spacer.style.width = '18px';
+        spacer.style.height = '18px';
+        wrap.appendChild(spacer);
+      }
+
+      const textWrap = document.createElement('div');
+      textWrap.className = 'row-text-wrap';
+      textWrap.style.minWidth = '0';
+      textWrap.style.flex = '1 1 auto';
+
+      const key = document.createElement('div');
+      key.className = 'key';
+      key.textContent = row.keyText || row.tooltipTitle || row.rowId || '';
+      textWrap.appendChild(key);
+
+      if (row.descriptionText) {
+        const desc = document.createElement('div');
+        desc.className = 'desc';
+        desc.textContent = row.descriptionText;
+        textWrap.appendChild(desc);
+      }
+
+      wrap.appendChild(textWrap);
+      return wrap;
+    }
+
     renderVisibleRows(startIndex, endIndex) {
       const labelFragment = document.createDocumentFragment();
       const rowLineFragment = document.createDocumentFragment();
