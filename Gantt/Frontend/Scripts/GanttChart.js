@@ -540,14 +540,24 @@
       });
 
       this.visibleRows = [];
+      this.visibleRenderRows = [];
       const walk = (row) => {
         this.visibleRows.push(row);
+        this.visibleRenderRows.push({ kind: 'status-header', rowId: row.rowId, statusKey: this.getNormalizedStatusValue(row), sourceRow: row });
+        this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, statusKey: this.getNormalizedStatusValue(row), sourceRow: row });
+
         const children = this.childRowsByParent.get(row.rowId) || [];
         if (!children.length || !row.hasChildren || !this.expandedRows.has(row.rowId)) return;
         children.forEach(walk);
       };
 
       roots.forEach(walk);
+
+      this.visibleRenderRows = this.visibleRenderRows.filter((entry, index, items) => {
+        if (entry.kind !== 'status-header') return true;
+        const previous = items[index - 1];
+        return !previous || previous.kind !== 'data' || previous.statusKey !== entry.statusKey;
+      });
     }
 
     buildDerivedCaches() {
@@ -556,8 +566,9 @@
       this.conflictingBarIds.clear();
       this.rowsWithConflict.clear();
 
-      this.visibleRows.forEach((row, index) => {
-        this.rowIndexById.set(row.rowId, index);
+      this.visibleRows.forEach((row) => {
+        const renderIndex = this.visibleRenderRows.findIndex((entry) => entry.kind === 'data' && entry.rowId === row.rowId);
+        this.rowIndexById.set(row.rowId, renderIndex);
       });
 
       const payloadMappings = this.payload?.mappingLines || [];
