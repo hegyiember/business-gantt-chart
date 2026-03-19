@@ -1410,8 +1410,8 @@
 
       const visibleRowIds = new Set();
       for (let index = startIndex; index < endIndex; index += 1) {
-        const row = this.visibleRows[index];
-        if (row) visibleRowIds.add(row.rowId);
+        const entry = this.visibleRenderRows[index];
+        if (entry && entry.kind === 'data') visibleRowIds.add(entry.rowId);
       }
 
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
