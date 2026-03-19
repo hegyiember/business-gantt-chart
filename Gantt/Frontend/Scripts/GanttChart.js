@@ -1613,14 +1613,14 @@
         ghost: null
       };
 
-      const rowIndex = this.rowIndexById.get(row.rowId) || 0;
-      const isChild = (bar.depth || 0) > 0 || (row.level || 0) > 0;
+      const renderIndex = this.rowIndexById.get(row.rowId) || 0;
+      const metrics = this.getBarVerticalMetrics(bar, renderIndex);
       const ghost = document.createElement('div');
       ghost.className = 'lve-bar-ghost';
       ghost.style.left = `${xStart}px`;
-      ghost.style.top = `${rowIndex * this.rowHeight + (isChild ? 10 : 8)}px`;
+      ghost.style.top = `${metrics.top}px`;
       ghost.style.width = `${Math.max(6, xEnd - xStart)}px`;
-      ghost.style.height = `${isChild ? 16 : 20}px`;
+      ghost.style.height = `${metrics.height}px`;
       this.ui.gridBarLayer.appendChild(ghost);
       this.dragState.ghost = ghost;
       this.log('Interaction', 'info', 'Drag start', { barId: bar.barId, mode });
