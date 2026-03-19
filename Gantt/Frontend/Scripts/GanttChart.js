@@ -304,7 +304,11 @@
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
       this.render();
       this.restoreViewportCenter(centerDate);
-      window.requestAnimationFrame(() => this.syncTimelineHeaderPosition());
+      window.requestAnimationFrame(() => {
+        this.syncTimelineHeaderPosition();
+        this.syncLabelViewport();
+        this.syncMiniMapViewport();
+      });
       this.log('View', 'info', 'Zoom changed', { zoom: this.zoom, grain: this.timeGrain, effectiveGrain: this.effectiveTimeGrain });
     }
 
