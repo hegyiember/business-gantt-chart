@@ -925,7 +925,7 @@
 
     renderRowsAndGrid() {
       this.viewportWidth = this.totalTimelineWidth;
-      this.totalContentHeight = this.visibleRows.length * this.rowHeight;
+      this.totalContentHeight = this.visibleRenderRows.length * this.rowHeight;
       const headHeight = this.ui.timelineHead.offsetHeight || 52;
 
       this.ui.labelPane.innerHTML = '';
