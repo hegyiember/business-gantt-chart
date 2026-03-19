@@ -683,7 +683,12 @@
       const scale = totalWidth > 0 ? this.totalTimelineWidth / totalWidth : 1;
       let offset = 0;
       this.timelineCols = columns.map((col) => {
-        const scaledCol = { ...col, width: col.width * scale, x: offset };
+        const scaledCol = {
+          start: col.start,
+          end: col.end,
+          width: col.width * scale,
+          x: offset
+        };
         offset += scaledCol.width;
         return scaledCol;
       });
