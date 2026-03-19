@@ -1176,7 +1176,7 @@
         normalized
       };
     }
-...
+
     renderVisibleRows(startIndex, endIndex) {
       const labelFragment = document.createDocumentFragment();
       const rowLineFragment = document.createDocumentFragment();
