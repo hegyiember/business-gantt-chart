@@ -1115,12 +1115,22 @@
       return index * this.rowHeight;
     }
 
+    getStatusPaletteColor(normalized) {
+      const palette = ['#4f7dbf', '#f3a64a', '#6e8f66', '#b85c7b', '#7f6bb3', '#3e9a95', '#9a7a3e', '#5f8ea8'];
+      let hash = 0;
+      const source = String(normalized || 'unspecified');
+      for (let index = 0; index < source.length; index += 1) {
+        hash = ((hash << 5) - hash + source.charCodeAt(index)) >>> 0;
+      }
+      return palette[hash % palette.length];
+    }
+
     getStatusMeta(row) {
-      const fallbackColor = /^#([0-9a-f]{6})$/i.test(String(row?.colorValue || '').trim())
-        ? String(row.colorValue).trim()
-        : '#7b8ca5';
       const displayLabel = this.getStatusDisplayValue(row) || 'Unspecified';
       const normalized = displayLabel.toLowerCase();
+      const overrideColor = /^#([0-9a-f]{6})$/i.test(String(row?.colorValue || '').trim())
+        ? String(row.colorValue).trim()
+        : '';
       const predefined = {
         planned: { label: 'Planned', color: '#4f7dbf' },
         'firm planned': { label: 'Firm Planned', color: '#6f8aa8' },
@@ -1129,56 +1139,17 @@
       };
       const base = predefined[normalized] || {
         label: displayLabel,
-        color: fallbackColor
+        color: overrideColor || this.getStatusPaletteColor(normalized)
       };
 
       return {
         label: base.label,
         color: base.color,
-        railColor: this.tintColor(base.color, 0.68),
+        railColor: this.tintColor(base.color, 0.18),
         normalized
       };
     }
-
-    createRowContentWrap(row, heightPx) {
-      const contentWrap = document.createElement('div');
-      contentWrap.style.height = `${heightPx}px`;
-      contentWrap.style.display = 'flex';
-      contentWrap.style.alignItems = 'center';
-      contentWrap.style.gap = '6px';
-      contentWrap.style.minWidth = '0';
-      contentWrap.style.paddingLeft = `${8 + row.level * 16}px`;
-      contentWrap.style.background = '#ffffff';
-
-      const expander = document.createElement('button');
-      expander.type = 'button';
-      expander.className = 'row-expander';
-      expander.textContent = row.hasChildren ? (this.expandedRows.has(row.rowId) ? '▾' : '▸') : '•';
-      expander.disabled = !row.hasChildren;
-      expander.addEventListener('click', () => {
-        if (!row.hasChildren) return;
-        if (this.expandedRows.has(row.rowId)) this.expandedRows.delete(row.rowId);
-        else this.expandedRows.add(row.rowId);
-        this.log('Interaction', 'info', 'Row toggle', { rowId: row.rowId });
-        this.render();
-      });
-
-      const textWrap = document.createElement('div');
-      textWrap.className = 'row-text-wrap';
-      const key = document.createElement('div');
-      key.className = 'key';
-      key.textContent = row.keyText || '';
-      const desc = document.createElement('div');
-      desc.className = 'desc';
-      desc.textContent = row.descriptionText || '';
-      textWrap.appendChild(key);
-      textWrap.appendChild(desc);
-
-      contentWrap.appendChild(expander);
-      contentWrap.appendChild(textWrap);
-      return contentWrap;
-    }
-
+...
     renderVisibleRows(startIndex, endIndex) {
       const labelFragment = document.createDocumentFragment();
       const rowLineFragment = document.createDocumentFragment();
@@ -1198,33 +1169,51 @@
         labelRow.style.right = '0';
         labelRow.style.top = `${rowTop}px`;
         labelRow.style.height = `${this.rowHeight}px`;
-        labelRow.style.paddingRight = '8px';
+        labelRow.style.paddingRight = '0';
         labelRow.style.background = '#ffffff';
-        labelRow.dataset.rowId = row.rowId;
+        labelRow.dataset.rowId = entry.rowId;
         labelRow.dataset.rowKind = entry.kind;
 
         if (entry.kind === 'status-header') {
-          labelRow.style.display = 'grid';
-          labelRow.style.gridTemplateColumns = `${this.statusLabelWidth}px minmax(0, 1fr)`;
+          labelRow.style.display = 'flex';
+          labelRow.style.alignItems = 'stretch';
+          labelRow.style.background = statusMeta.color;
 
-          const statusHeader = document.createElement('div');
+          const statusHeader = document.createElement('button');
+          statusHeader.type = 'button';
           statusHeader.style.display = 'flex';
           statusHeader.style.alignItems = 'center';
-          statusHeader.style.padding = '0 8px';
-          statusHeader.style.overflow = 'hidden';
-          statusHeader.style.whiteSpace = 'nowrap';
-          statusHeader.style.textOverflow = 'ellipsis';
+          statusHeader.style.gap = '8px';
+          statusHeader.style.width = '100%';
+          statusHeader.style.padding = '0 10px';
+          statusHeader.style.border = '0';
+          statusHeader.style.background = statusMeta.color;
+          statusHeader.style.color = '#ffffff';
+          statusHeader.style.cursor = 'pointer';
           statusHeader.style.fontSize = '11px';
           statusHeader.style.fontWeight = '700';
-          statusHeader.style.color = '#ffffff';
-          statusHeader.style.background = statusMeta.color;
-          statusHeader.textContent = statusMeta.label;
+          statusHeader.style.textAlign = 'left';
 
-          const spacer = document.createElement('div');
-          spacer.style.background = '#ffffff';
+          const expander = document.createElement('span');
+          expander.textContent = this.expandedStatusGroups.has(entry.statusKey) ? '▾' : '▸';
+          expander.style.flex = '0 0 auto';
 
+          const text = document.createElement('span');
+          text.textContent = statusMeta.label;
+          text.style.minWidth = '0';
+          text.style.overflow = 'hidden';
+          text.style.whiteSpace = 'nowrap';
+          text.style.textOverflow = 'ellipsis';
+
+          statusHeader.appendChild(expander);
+          statusHeader.appendChild(text);
+          statusHeader.addEventListener('click', () => {
+            if (this.expandedStatusGroups.has(entry.statusKey)) this.expandedStatusGroups.delete(entry.statusKey);
+            else this.expandedStatusGroups.add(entry.statusKey);
+            this.log('Interaction', 'info', 'Status group toggle', { status: statusMeta.label, expanded: this.expandedStatusGroups.has(entry.statusKey) });
+            this.render();
+          });
           labelRow.appendChild(statusHeader);
-          labelRow.appendChild(spacer);
 
           const blankGridRow = document.createElement('div');
           blankGridRow.style.position = 'absolute';

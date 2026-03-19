@@ -473,7 +473,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
             if CaptionText = '' then
                 CaptionText := ValidationHelper.GetFieldCaption(MappingLine."Source Table ID", DetailLine."Field ID");
             TooltipFieldJson.Add('caption', CaptionText);
-            TooltipFieldJson.Add('value', ValidationHelper.GetFieldValueAsText(SourceRef, DetailLine."Field ID"));
+            TooltipFieldJson.Add('value', ValidationHelper.GetFieldValueAsDisplayText(SourceRef, DetailLine."Field ID"));
             TooltipFields.Add(TooltipFieldJson);
         until DetailLine.Next() = 0;
     end;

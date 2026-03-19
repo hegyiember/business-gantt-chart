@@ -479,8 +479,7 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
             exit(false);
         if not Evaluate(SecondValue, CopyStr(TimeText, 7, 2)) then
             exit(false);
-        TimeValue := HMS2Time(HourValue, MinuteValue, SecondValue);
-        exit(true);
+        exit(Evaluate(TimeValue, CopyStr(TimeText, 1, 8)));
     end;
 
     local procedure TryCreateIsoDate(InputText: Text; var DateValue: Date): Boolean

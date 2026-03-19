@@ -4,9 +4,9 @@ controladdin "DGOG Gantt Diagram"
     VerticalStretch = true;
     MinimumHeight = 480;
     RequestedHeight = 760;
-    Scripts = 'Gantt/Frontend/Scripts/GanttChart.js';
-    StartupScript = 'Gantt/Frontend/Scripts/GanttStartup.js';
-    StyleSheets = 'Gantt/Frontend/Resources/GanttChart.css';
+    Scripts = 'src/Features/Gantt/Frontend/Scripts/GanttChart.js';
+    StartupScript = 'src/Features/Gantt/Frontend/Scripts/GanttStartup.js';
+    StyleSheets = 'src/Features/Gantt/Frontend/Resources/GanttChart.css';
 
     event ControlReady();
     event LogMessage(Category: Text; Level: Text; MessageText: Text; ContextJson: Text);
