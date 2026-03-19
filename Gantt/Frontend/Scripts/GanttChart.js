@@ -1078,6 +1078,35 @@
       });
     }
 
+    getNormalizedStatusValue(row) {
+      return String(row?.statusValue || '').trim().toLowerCase();
+    }
+
+    getStatusMeta(row) {
+      const fallbackColor = /^#([0-9a-f]{6})$/i.test(String(row?.colorValue || '').trim())
+        ? String(row.colorValue).trim()
+        : '#7b8ca5';
+      const normalized = this.getNormalizedStatusValue(row);
+      const predefined = {
+        planned: { label: 'Planned', color: '#4f7dbf' },
+        'firm planned': { label: 'Firm Planned', color: '#6f8aa8' },
+        released: { label: 'Released', color: '#f3a64a' },
+        finished: { label: 'Finished', color: '#6e8f66' }
+      };
+      const base = predefined[normalized] || {
+        label: row?.statusValue || 'Unspecified',
+        color: fallbackColor
+      };
+
+      return {
+        label: base.label,
+        color: base.color,
+        railColor: this.tintColor(base.color, 0.62),
+        surfaceColor: this.tintColor(base.color, 0.93),
+        normalized
+      };
+    }
+
     renderVisibleRows(startIndex, endIndex) {
       const labelFragment = document.createDocumentFragment();
       const rowLineFragment = document.createDocumentFragment();
@@ -1087,6 +1116,10 @@
         if (!row) continue;
 
         const rowTop = index * this.rowHeight;
+        const statusMeta = this.getStatusMeta(row);
+        const previousRow = index > 0 ? this.visibleRows[index - 1] : null;
+        const isNewStatusGroup = index === 0 || this.getNormalizedStatusValue(previousRow) !== statusMeta.normalized;
+
         const labelRow = document.createElement('div');
         labelRow.className = 'lve-label-row';
         labelRow.style.position = 'absolute';
@@ -1094,8 +1127,38 @@
         labelRow.style.right = '0';
         labelRow.style.top = `${rowTop}px`;
         labelRow.style.height = `${this.rowHeight}px`;
-        labelRow.style.paddingLeft = `${8 + row.level * 16}px`;
+        labelRow.style.paddingRight = '8px';
+        labelRow.style.display = 'grid';
+        labelRow.style.gridTemplateColumns = '84px minmax(0, 1fr)';
+        labelRow.style.gap = '0';
         labelRow.dataset.rowId = row.rowId;
+        if (isNewStatusGroup) labelRow.style.boxShadow = `inset 0 2px 0 ${statusMeta.color}`;
+
+        const statusPanel = document.createElement('div');
+        statusPanel.style.height = '100%';
+        statusPanel.style.display = 'flex';
+        statusPanel.style.alignItems = 'center';
+        statusPanel.style.justifyContent = 'flex-start';
+        statusPanel.style.padding = '0 8px';
+        statusPanel.style.overflow = 'hidden';
+        statusPanel.style.whiteSpace = 'nowrap';
+        statusPanel.style.textOverflow = 'ellipsis';
+        statusPanel.style.fontSize = '10px';
+        statusPanel.style.fontWeight = '700';
+        statusPanel.style.letterSpacing = '0.04em';
+        statusPanel.style.textTransform = 'uppercase';
+        statusPanel.style.color = '#ffffff';
+        statusPanel.style.background = isNewStatusGroup ? statusMeta.color : statusMeta.railColor;
+        statusPanel.textContent = isNewStatusGroup ? statusMeta.label : '';
+
+        const contentWrap = document.createElement('div');
+        contentWrap.style.height = '100%';
+        contentWrap.style.display = 'flex';
+        contentWrap.style.alignItems = 'center';
+        contentWrap.style.gap = '6px';
+        contentWrap.style.minWidth = '0';
+        contentWrap.style.paddingLeft = `${8 + row.level * 16}px`;
+        contentWrap.style.background = isNewStatusGroup ? statusMeta.surfaceColor : '#ffffff';
 
         const expander = document.createElement('button');
         expander.type = 'button';
@@ -1121,10 +1184,22 @@
         textWrap.appendChild(key);
         textWrap.appendChild(desc);
 
-        labelRow.appendChild(expander);
-        labelRow.appendChild(textWrap);
+        contentWrap.appendChild(expander);
+        contentWrap.appendChild(textWrap);
+        labelRow.appendChild(statusPanel);
+        labelRow.appendChild(contentWrap);
         this.addTooltipHandlers(labelRow, row.tooltipTitle, row.tooltipFields);
         labelFragment.appendChild(labelRow);
+
+        if (isNewStatusGroup && index > 0) {
+          const groupLine = document.createElement('div');
+          groupLine.className = 'hline';
+          groupLine.style.top = `${rowTop}px`;
+          groupLine.style.height = '2px';
+          groupLine.style.background = statusMeta.color;
+          groupLine.style.opacity = '0.42';
+          rowLineFragment.appendChild(groupLine);
+        }
 
         const hLine = document.createElement('div');
         hLine.className = 'hline';
@@ -1212,6 +1287,49 @@
       return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
+    getBarLayout(bar, rowIndex) {
+      const start = toDate(bar?.start);
+      const end = toDate(bar?.end);
+      if (!start || !end || rowIndex === undefined) return null;
+
+      const left = this.dateToX(start);
+      const right = Math.max(left + 6, this.dateToX(end));
+      const isChild = (bar?.depth || 0) > 0 || ((this.visibleRows[rowIndex]?.level || 0) > 0);
+      const top = rowIndex * this.rowHeight + (isChild ? 10 : 8);
+      const height = isChild ? 16 : 20;
+
+      return {
+        left,
+        right,
+        width: right - left,
+        top,
+        bottom: top + height,
+        centerY: top + height / 2
+      };
+    }
+
+    buildDependencyRoute(sourceLayout, targetLayout) {
+      if (!sourceLayout || !targetLayout) return null;
+
+      const directGap = targetLayout.left - sourceLayout.right;
+      if (directGap >= 12) {
+        const laneX = Math.min(
+          this.totalTimelineWidth - 8,
+          Math.max(sourceLayout.right + 12, sourceLayout.right + directGap / 2)
+        );
+        return {
+          direction: 'right',
+          path: `M ${sourceLayout.right} ${sourceLayout.centerY} L ${laneX} ${sourceLayout.centerY} L ${laneX} ${targetLayout.centerY} L ${targetLayout.left} ${targetLayout.centerY}`
+        };
+      }
+
+      const laneX = Math.max(8, Math.min(sourceLayout.left, targetLayout.left) - 18);
+      return {
+        direction: 'left',
+        path: `M ${sourceLayout.left} ${sourceLayout.centerY} L ${laneX} ${sourceLayout.centerY} L ${laneX} ${targetLayout.centerY} L ${targetLayout.left} ${targetLayout.centerY}`
+      };
+    }
+
     renderDependencies(startIndex, endIndex) {
       if (!this.ui.dependencyLayer) return;
       if ((this.payload?.setup || {}).enableDependencies === false) return;
@@ -1219,6 +1337,7 @@
 
       const deps = this.payload.dependencies || [];
       const svg = this.ui.dependencyLayer;
+      const rowsById = new Map((this.payload?.rows || []).map((row) => [row.rowId, row]));
       svg.innerHTML = '';
       svg.setAttribute('width', String(this.totalTimelineWidth));
       svg.setAttribute('height', String(this.totalContentHeight));
@@ -1251,33 +1370,38 @@
         const targetBar = this.barByDependencyKey.get(this.getDependencyLookupKey(dep.mappingLineNo, dep.targetKey))
           || this.barByDependencyKey.get(dep.targetKey);
         if (!sourceBar || !targetBar) return;
-        resolvedDependencies.push({ dep, sourceBar, targetBar });
+
+        const sourceRowIndex = this.rowIndexById.get(sourceBar.rowId);
+        const targetRowIndex = this.rowIndexById.get(targetBar.rowId);
+        const sourceLayout = this.getBarLayout(sourceBar, sourceRowIndex);
+        const targetLayout = this.getBarLayout(targetBar, targetRowIndex);
+        const route = this.buildDependencyRoute(sourceLayout, targetLayout);
+
+        resolvedDependencies.push({
+          dep,
+          sourceBar,
+          targetBar,
+          sourceRow: rowsById.get(sourceBar.rowId) || {},
+          targetRow: rowsById.get(targetBar.rowId) || {},
+          sourceLayout,
+          targetLayout,
+          route,
+          shouldRender: !!route && (visibleRowIds.has(sourceBar.rowId) || visibleRowIds.has(targetBar.rowId))
+        });
       });
 
       this.logDependencyDebugGroups(resolvedDependencies);
 
-      resolvedDependencies.forEach(({ sourceBar, targetBar }) => {
-        if (!visibleRowIds.has(sourceBar.rowId) && !visibleRowIds.has(targetBar.rowId)) return;
-
-        const sourceRowIndex = this.rowIndexById.get(sourceBar.rowId);
-        const targetRowIndex = this.rowIndexById.get(targetBar.rowId);
-        if (sourceRowIndex === undefined || targetRowIndex === undefined) return;
-
-        const sourceDate = toDate(sourceBar.end || sourceBar.start);
-        const targetDate = toDate(targetBar.start);
-        if (!sourceDate || !targetDate) return;
-
-        const sx = this.dateToX(sourceDate);
-        const tx = this.dateToX(targetDate);
-        const sy = sourceRowIndex * this.rowHeight + 18;
-        const ty = targetRowIndex * this.rowHeight + 18;
-        const mid = sx + Math.max(14, Math.min(38, Math.abs(tx - sx) / 2));
+      resolvedDependencies.forEach((item) => {
+        if (!item.shouldRender || !item.route) return;
 
         const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        arrow.setAttribute('d', `M ${sx} ${sy} L ${mid} ${sy} L ${mid} ${ty} L ${tx} ${ty}`);
+        arrow.setAttribute('d', item.route.path);
         arrow.setAttribute('fill', 'none');
         arrow.setAttribute('stroke', '#60728a');
         arrow.setAttribute('stroke-width', '1.2');
+        arrow.setAttribute('stroke-linejoin', 'round');
+        arrow.setAttribute('stroke-linecap', 'round');
         arrow.setAttribute('marker-end', 'url(#dgog-arrow)');
         svg.appendChild(arrow);
       });
@@ -1302,16 +1426,19 @@
         level: row?.level || 0,
         keyText: row?.keyText || '',
         descriptionText: row?.descriptionText || '',
+        statusValue: row?.statusValue || '',
+        colorValue: row?.colorValue || '',
         tooltipTitle: row?.tooltipTitle || '',
         yLabel: this.getRowDebugLabel(row),
         yLabelFields: tooltipFields
       };
     }
 
-    getBarDebugInfo(bar, row) {
+    getBarDebugInfo(bar, row, route, layout) {
       return {
         barId: bar?.barId || '',
         label: bar?.label || '',
+        status: bar?.status || row?.statusValue || '',
         rowId: bar?.rowId || row?.rowId || '',
         dependencyKey: bar?.dependencyKey || '',
         mappingLineNo: bar?.mappingLineNo || 0,
@@ -1320,25 +1447,25 @@
         start: bar?.start || '',
         end: bar?.end || '',
         due: bar?.due || '',
+        layout: layout || null,
+        routeDirection: route?.direction || '',
         yAxisContext: this.getRowDebugInfo(row)
       };
     }
 
     logDependencyDebugGroups(resolvedDependencies) {
       const signature = resolvedDependencies
-        .map(({ dep, sourceBar, targetBar }) => `${dep.mappingLineNo || 0}:${sourceBar.barId || sourceBar.dependencyKey}->${targetBar.barId || targetBar.dependencyKey}`)
+        .map(({ dep, sourceBar, targetBar, route }) => `${dep.mappingLineNo || 0}:${sourceBar.barId || sourceBar.dependencyKey}->${targetBar.barId || targetBar.dependencyKey}:${route?.direction || 'none'}`)
         .join('|');
       if (signature === this.lastDependencyDebugSignature) return;
       this.lastDependencyDebugSignature = signature;
 
-      const rowsById = new Map((this.payload?.rows || []).map((row) => [row.rowId, row]));
       const groups = new Map();
 
-      resolvedDependencies.forEach(({ dep, sourceBar, targetBar }) => {
-        const sourceRow = rowsById.get(sourceBar.rowId) || {};
-        const targetRow = rowsById.get(targetBar.rowId) || {};
+      resolvedDependencies.forEach((item) => {
+        const { dep, sourceBar, targetBar, sourceRow, targetRow, route, sourceLayout, targetLayout } = item;
         const parentRowId = sourceRow.parentRowId || targetRow.parentRowId || sourceBar.rowId || targetBar.rowId || 'root';
-        const parentRow = rowsById.get(parentRowId) || {};
+        const parentRow = this.payload?.rows?.find((row) => row.rowId === parentRowId) || {};
         const groupKey = `${dep.mappingLineNo || 0}|${parentRowId}`;
 
         if (!groups.has(groupKey)) {
@@ -1353,10 +1480,12 @@
           relation: {
             mappingLineNo: dep.mappingLineNo || 0,
             sourceKey: dep.sourceKey || '',
-            targetKey: dep.targetKey || ''
+            targetKey: dep.targetKey || '',
+            routeDirection: route?.direction || 'unresolved',
+            rendered: !!item.shouldRender
           },
-          source: this.getBarDebugInfo(sourceBar, sourceRow),
-          target: this.getBarDebugInfo(targetBar, targetRow)
+          source: this.getBarDebugInfo(sourceBar, sourceRow, route, sourceLayout),
+          target: this.getBarDebugInfo(targetBar, targetRow, route, targetLayout)
         });
       });
 
@@ -1368,7 +1497,7 @@
         console.log('parent', group.parent);
         group.items.forEach((item, index) => {
           console.groupCollapsed(
-            `[GANTT][dependency-arrow ${index + 1}] ${item.source.yAxisContext.yLabel} -> ${item.target.yAxisContext.yLabel}`
+            `[GANTT][dependency-arrow ${index + 1}] ${item.source.yAxisContext.yLabel} -> ${item.target.yAxisContext.yLabel} [${item.relation.routeDirection}]`
           );
           console.log('relation', item.relation);
           console.log('source', item.source);
