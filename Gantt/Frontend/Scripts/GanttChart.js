@@ -1081,15 +1081,31 @@
       });
     }
 
+    getStatusDisplayValue(row) {
+      return String(row?.statusLabel || row?.statusValue || '').trim();
+    }
+
     getNormalizedStatusValue(row) {
-      return String(row?.statusValue || '').trim().toLowerCase();
+      return this.getStatusDisplayValue(row).toLowerCase();
+    }
+
+    isStatusGroupStart(index) {
+      const row = this.visibleRows[index];
+      if (!row) return false;
+      const previousRow = index > 0 ? this.visibleRows[index - 1] : null;
+      return index === 0 || this.getNormalizedStatusValue(previousRow) !== this.getNormalizedStatusValue(row);
+    }
+
+    getRowContentOffset(index) {
+      return this.isStatusGroupStart(index) ? this.statusGroupHeaderHeight : 0;
     }
 
     getStatusMeta(row) {
       const fallbackColor = /^#([0-9a-f]{6})$/i.test(String(row?.colorValue || '').trim())
         ? String(row.colorValue).trim()
         : '#7b8ca5';
-      const normalized = this.getNormalizedStatusValue(row);
+      const displayLabel = this.getStatusDisplayValue(row) || 'Unspecified';
+      const normalized = displayLabel.toLowerCase();
       const predefined = {
         planned: { label: 'Planned', color: '#4f7dbf' },
         'firm planned': { label: 'Firm Planned', color: '#6f8aa8' },
@@ -1097,17 +1113,55 @@
         finished: { label: 'Finished', color: '#6e8f66' }
       };
       const base = predefined[normalized] || {
-        label: row?.statusValue || 'Unspecified',
+        label: displayLabel,
         color: fallbackColor
       };
 
       return {
         label: base.label,
         color: base.color,
-        railColor: this.tintColor(base.color, 0.62),
-        surfaceColor: this.tintColor(base.color, 0.93),
+        railColor: this.tintColor(base.color, 0.68),
         normalized
       };
+    }
+
+    createRowContentWrap(row, heightPx) {
+      const contentWrap = document.createElement('div');
+      contentWrap.style.height = `${heightPx}px`;
+      contentWrap.style.display = 'flex';
+      contentWrap.style.alignItems = 'center';
+      contentWrap.style.gap = '6px';
+      contentWrap.style.minWidth = '0';
+      contentWrap.style.paddingLeft = `${8 + row.level * 16}px`;
+      contentWrap.style.background = '#ffffff';
+
+      const expander = document.createElement('button');
+      expander.type = 'button';
+      expander.className = 'row-expander';
+      expander.textContent = row.hasChildren ? (this.expandedRows.has(row.rowId) ? '▾' : '▸') : '•';
+      expander.disabled = !row.hasChildren;
+      expander.addEventListener('click', () => {
+        if (!row.hasChildren) return;
+        if (this.expandedRows.has(row.rowId)) this.expandedRows.delete(row.rowId);
+        else this.expandedRows.add(row.rowId);
+        this.log('Interaction', 'info', 'Row toggle', { rowId: row.rowId });
+        this.render();
+      });
+
+      const textWrap = document.createElement('div');
+      textWrap.className = 'row-text-wrap';
+      const key = document.createElement('div');
+      key.className = 'key';
+      key.textContent = row.keyText || '';
+      const desc = document.createElement('div');
+      desc.className = 'desc';
+      desc.textContent = row.descriptionText || '';
+      textWrap.appendChild(key);
+      textWrap.appendChild(desc);
+
+      contentWrap.appendChild(expander);
+      contentWrap.appendChild(textWrap);
+      return contentWrap;
     }
 
     renderVisibleRows(startIndex, endIndex) {
@@ -1120,8 +1174,8 @@
 
         const rowTop = index * this.rowHeight;
         const statusMeta = this.getStatusMeta(row);
-        const previousRow = index > 0 ? this.visibleRows[index - 1] : null;
-        const isNewStatusGroup = index === 0 || this.getNormalizedStatusValue(previousRow) !== statusMeta.normalized;
+        const isNewStatusGroup = this.isStatusGroupStart(index);
+        const contentHeight = this.rowHeight - (isNewStatusGroup ? this.statusGroupHeaderHeight : 0);
 
         const labelRow = document.createElement('div');
         labelRow.className = 'lve-label-row';
@@ -1131,78 +1185,70 @@
         labelRow.style.top = `${rowTop}px`;
         labelRow.style.height = `${this.rowHeight}px`;
         labelRow.style.paddingRight = '8px';
-        labelRow.style.display = 'grid';
-        labelRow.style.gridTemplateColumns = '84px minmax(0, 1fr)';
-        labelRow.style.gap = '0';
+        labelRow.style.background = '#ffffff';
         labelRow.dataset.rowId = row.rowId;
-        if (isNewStatusGroup) labelRow.style.boxShadow = `inset 0 2px 0 ${statusMeta.color}`;
 
-        const statusPanel = document.createElement('div');
-        statusPanel.style.height = '100%';
-        statusPanel.style.display = 'flex';
-        statusPanel.style.alignItems = 'center';
-        statusPanel.style.justifyContent = 'flex-start';
-        statusPanel.style.padding = '0 8px';
-        statusPanel.style.overflow = 'hidden';
-        statusPanel.style.whiteSpace = 'nowrap';
-        statusPanel.style.textOverflow = 'ellipsis';
-        statusPanel.style.fontSize = '10px';
-        statusPanel.style.fontWeight = '700';
-        statusPanel.style.letterSpacing = '0.04em';
-        statusPanel.style.textTransform = 'uppercase';
-        statusPanel.style.color = '#ffffff';
-        statusPanel.style.background = isNewStatusGroup ? statusMeta.color : statusMeta.railColor;
-        statusPanel.textContent = isNewStatusGroup ? statusMeta.label : '';
+        if (isNewStatusGroup) {
+          labelRow.style.display = 'flex';
+          labelRow.style.flexDirection = 'column';
 
-        const contentWrap = document.createElement('div');
-        contentWrap.style.height = '100%';
-        contentWrap.style.display = 'flex';
-        contentWrap.style.alignItems = 'center';
-        contentWrap.style.gap = '6px';
-        contentWrap.style.minWidth = '0';
-        contentWrap.style.paddingLeft = `${8 + row.level * 16}px`;
-        contentWrap.style.background = isNewStatusGroup ? statusMeta.surfaceColor : '#ffffff';
+          const headerRow = document.createElement('div');
+          headerRow.style.height = `${this.statusGroupHeaderHeight}px`;
+          headerRow.style.display = 'grid';
+          headerRow.style.gridTemplateColumns = `${this.statusLabelWidth}px minmax(0, 1fr)`;
 
-        const expander = document.createElement('button');
-        expander.type = 'button';
-        expander.className = 'row-expander';
-        expander.textContent = row.hasChildren ? (this.expandedRows.has(row.rowId) ? '▾' : '▸') : '•';
-        expander.disabled = !row.hasChildren;
-        expander.addEventListener('click', () => {
-          if (!row.hasChildren) return;
-          if (this.expandedRows.has(row.rowId)) this.expandedRows.delete(row.rowId);
-          else this.expandedRows.add(row.rowId);
-          this.log('Interaction', 'info', 'Row toggle', { rowId: row.rowId });
-          this.render();
-        });
+          const statusHeader = document.createElement('div');
+          statusHeader.style.display = 'flex';
+          statusHeader.style.alignItems = 'center';
+          statusHeader.style.padding = '0 8px';
+          statusHeader.style.overflow = 'hidden';
+          statusHeader.style.whiteSpace = 'nowrap';
+          statusHeader.style.textOverflow = 'ellipsis';
+          statusHeader.style.fontSize = '11px';
+          statusHeader.style.fontWeight = '700';
+          statusHeader.style.color = '#ffffff';
+          statusHeader.style.background = statusMeta.color;
+          statusHeader.textContent = statusMeta.label;
 
-        const textWrap = document.createElement('div');
-        textWrap.className = 'row-text-wrap';
-        const key = document.createElement('div');
-        key.className = 'key';
-        key.textContent = row.keyText || '';
-        const desc = document.createElement('div');
-        desc.className = 'desc';
-        desc.textContent = row.descriptionText || '';
-        textWrap.appendChild(key);
-        textWrap.appendChild(desc);
+          const headerSpacer = document.createElement('div');
+          headerSpacer.style.background = '#ffffff';
 
-        contentWrap.appendChild(expander);
-        contentWrap.appendChild(textWrap);
-        labelRow.appendChild(statusPanel);
-        labelRow.appendChild(contentWrap);
+          headerRow.appendChild(statusHeader);
+          headerRow.appendChild(headerSpacer);
+          labelRow.appendChild(headerRow);
+
+          const contentRow = document.createElement('div');
+          contentRow.style.height = `${contentHeight}px`;
+          contentRow.style.display = 'grid';
+          contentRow.style.gridTemplateColumns = `${this.statusRailWidth}px minmax(0, 1fr)`;
+
+          const rail = document.createElement('div');
+          rail.style.background = statusMeta.railColor;
+
+          contentRow.appendChild(rail);
+          contentRow.appendChild(this.createRowContentWrap(row, contentHeight));
+          labelRow.appendChild(contentRow);
+
+          const groupGap = document.createElement('div');
+          groupGap.style.position = 'absolute';
+          groupGap.style.left = '0';
+          groupGap.style.top = `${rowTop}px`;
+          groupGap.style.width = `${this.totalTimelineWidth}px`;
+          groupGap.style.height = `${this.statusGroupHeaderHeight}px`;
+          groupGap.style.background = '#ffffff';
+          rowLineFragment.appendChild(groupGap);
+        } else {
+          labelRow.style.display = 'grid';
+          labelRow.style.gridTemplateColumns = `${this.statusRailWidth}px minmax(0, 1fr)`;
+
+          const rail = document.createElement('div');
+          rail.style.background = statusMeta.railColor;
+          labelRow.appendChild(rail);
+          labelRow.appendChild(this.createRowContentWrap(row, this.rowHeight));
+        }
+
         this.addTooltipHandlers(labelRow, row.tooltipTitle, row.tooltipFields);
         labelFragment.appendChild(labelRow);
-
-        if (isNewStatusGroup && index > 0) {
-          const groupLine = document.createElement('div');
-          groupLine.className = 'hline';
-          groupLine.style.top = `${rowTop}px`;
-          groupLine.style.height = '2px';
-          groupLine.style.background = statusMeta.color;
-          groupLine.style.opacity = '0.42';
-          rowLineFragment.appendChild(groupLine);
-        }
 
         const hLine = document.createElement('div');
         hLine.className = 'hline';
