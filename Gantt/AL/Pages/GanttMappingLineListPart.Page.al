@@ -153,6 +153,29 @@ page 71891729 "DGOG Gantt Mapping Line Part"
     {
         area(Processing)
         {
+            action(MapGroupingFields)
+            {
+                ApplicationArea = All;
+                Caption = 'Map Grouping Fields';
+                Image = List;
+                Promoted = true;
+                PromotedCategory = Process;
+                ToolTip = 'Opens the ordered grouping-field list for the current mapping line.';
+
+                trigger OnAction()
+                var
+                    GroupingLine: Record "DGOG Gantt Grouping Line";
+                begin
+                    Rec.TestField("Setup ID");
+                    Rec.TestField("View Code");
+                    Rec.TestField("Line No.");
+
+                    GroupingLine.SetRange("Setup ID", Rec."Setup ID");
+                    GroupingLine.SetRange("View Code", Rec."View Code");
+                    GroupingLine.SetRange("Mapping Line No.", Rec."Line No.");
+                    Page.RunModal(Page::"DGOG Gantt Grouping List", GroupingLine);
+                end;
+            }
             action(MapParentFields)
             {
                 ApplicationArea = All;

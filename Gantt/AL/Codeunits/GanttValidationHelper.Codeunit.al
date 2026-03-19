@@ -33,6 +33,7 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
 
         repeat
             ValidateMappingLine(MappingLine);
+            ValidateGroupingLines(MappingLine);
         until MappingLine.Next() = 0;
 
         DetailLine.SetRange("Setup ID", GanttSetup."ID");
@@ -79,6 +80,21 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
             Error('Detail line %1 references missing mapping line %2 in view %3 setup %4.', DetailLine."Line No.", DetailLine."Mapping Line No.", DetailLine."View Code", DetailLine."Setup ID");
 
         EnsureFieldExists(MappingLine."Source Table ID", DetailLine."Field ID");
+    end;
+
+    local procedure ValidateGroupingLines(MappingLine: Record "DGOG Gantt Mapping Line")
+    var
+        GroupingLine: Record "DGOG Gantt Grouping Line";
+    begin
+        GroupingLine.SetRange("Setup ID", MappingLine."Setup ID");
+        GroupingLine.SetRange("View Code", MappingLine."View Code");
+        GroupingLine.SetRange("Mapping Line No.", MappingLine."Line No.");
+        if not GroupingLine.FindSet() then
+            exit;
+
+        repeat
+            EnsureFieldExists(MappingLine."Source Table ID", GroupingLine."Group Field ID");
+        until GroupingLine.Next() = 0;
     end;
 
     procedure ResolveViewCode(SetupId: Integer; RequestedViewCode: Code[20]): Code[20]
