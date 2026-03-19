@@ -103,6 +103,8 @@
       this.rowHeight = 36;
       this.rowOverscan = 12;
       this.renderFrame = 0;
+      this.dependencyRenderFrame = 0;
+      this.lastDependencyDebugSignature = '';
     }
 
     log(category, level, message, context) {
