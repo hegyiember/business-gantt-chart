@@ -1339,10 +1339,11 @@
       return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
-    getBarVerticalMetrics(bar, rowIndex) {
-      const row = this.visibleRows[rowIndex] || {};
+    getBarVerticalMetrics(bar, renderIndex) {
+      const entry = this.visibleRenderRows[renderIndex] || {};
+      const row = entry.sourceRow || {};
       const isChild = (bar?.depth || 0) > 0 || ((row.level || 0) > 0);
-      const top = rowIndex * this.rowHeight + this.getRowContentOffset(rowIndex) + (isChild ? 8 : 6);
+      const top = this.getRenderRowTop(renderIndex) + (isChild ? 10 : 8);
       const height = isChild ? 16 : 20;
 
       return {
