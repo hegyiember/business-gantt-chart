@@ -212,6 +212,34 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
         exit(Format(SourceField.Value, 0, 9));
     end;
 
+    procedure GetFieldValueAsDisplayText(var SourceRef: RecordRef; FieldId: Integer): Text
+    var
+        SourceField: FieldRef;
+        OrdinalValue: Integer;
+        RawValue: Text;
+        OptionCaptions: Text;
+    begin
+        if FieldId = 0 then
+            exit('');
+
+        SourceField := SourceRef.Field(FieldId);
+        RawValue := Format(SourceField.Value, 0, 9);
+        if RawValue = '' then
+            exit('');
+
+        if SourceField.IsEnum() then begin
+            if Evaluate(OrdinalValue, RawValue) then
+                exit(SourceField.GetEnumValueCaptionFromOrdinalValue(OrdinalValue));
+            exit(RawValue);
+        end;
+
+        OptionCaptions := SourceField.OptionCaption;
+        if (OptionCaptions <> '') and Evaluate(OrdinalValue, RawValue) then
+            exit(SelectStr(OrdinalValue + 1, OptionCaptions));
+
+        exit(RawValue);
+    end;
+
     procedure GetFieldValueAsIso(var SourceRef: RecordRef; FieldId: Integer): Text
     var
         FieldMeta: Record Field;
