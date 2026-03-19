@@ -220,7 +220,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         RowJson.Add('hasChildren', HasChildren and MappingLine."Is Expandable");
         RowJson.Add('isExpanded', false);
         RowJson.Add('isEditable', MappingLine."Is Editable");
-        RowJson.Add('statusValue', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Status Field ID"));
+        RowJson.Add('statusValue', ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Status Field ID"));
         RowJson.Add('colorValue', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Color Override Field ID"));
         RowJson.Add('conflictGroupKey', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Conflict Group Field ID"));
         RowJson.Add('resourceKey', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Resource Group Field ID"));

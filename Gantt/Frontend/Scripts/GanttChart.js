@@ -100,7 +100,10 @@
       this.totalContentHeight = 0;
       this.lastScrollLeft = 0;
       this.miniMapEnabled = true;
-      this.rowHeight = 36;
+      this.rowHeight = 48;
+      this.statusGroupHeaderHeight = 16;
+      this.statusLabelWidth = 112;
+      this.statusRailWidth = 20;
       this.rowOverscan = 12;
       this.renderFrame = 0;
       this.dependencyRenderFrame = 0;
