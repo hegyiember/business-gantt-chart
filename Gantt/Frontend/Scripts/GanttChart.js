@@ -1264,10 +1264,11 @@
     renderBars(startIndex, endIndex) {
       const fragment = document.createDocumentFragment();
 
-      for (let rowIndex = startIndex; rowIndex < endIndex; rowIndex += 1) {
-        const row = this.visibleRows[rowIndex];
-        if (!row) continue;
+      for (let renderIndex = startIndex; renderIndex < endIndex; renderIndex += 1) {
+        const entry = this.visibleRenderRows[renderIndex];
+        if (!entry || entry.kind !== 'data') continue;
 
+        const row = entry.sourceRow;
         const rowBars = this.barMapByRow.get(row.rowId) || [];
         rowBars.forEach((bar) => {
           const start = toDate(bar.start);
@@ -1277,7 +1278,7 @@
           const xStart = this.dateToX(start);
           const xEnd = this.dateToX(end);
           const width = Math.max(6, xEnd - xStart);
-          const metrics = this.getBarVerticalMetrics(bar, rowIndex);
+          const metrics = this.getBarVerticalMetrics(bar, renderIndex);
           const isChild = metrics.isChild;
           const top = metrics.top;
           const height = metrics.height;
