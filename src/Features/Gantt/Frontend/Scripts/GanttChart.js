@@ -1156,26 +1156,83 @@
       return index * this.rowHeight;
     }
 
-    getGroupPaletteColor(source) {
-      const palette = ['#4f7dbf', '#f3a64a', '#6e8f66', '#b85c7b', '#7f6bb3', '#3e9a95', '#9a7a3e', '#5f8ea8'];
+    hashText(value) {
       let hash = 0;
-      const text = String(source || 'group');
+      const text = String(value || 'group');
       for (let index = 0; index < text.length; index += 1) {
         hash = ((hash << 5) - hash + text.charCodeAt(index)) >>> 0;
       }
-      return palette[hash % palette.length];
+      return hash;
+    }
+
+    getGroupingColorFamilies() {
+      return [
+        ['#7f1d1d', '#991b1b', '#b91c1c', '#dc2626', '#ef4444'],
+        ['#0f766e', '#0d9488', '#14b8a6', '#2dd4bf', '#5eead4'],
+        ['#9a3412', '#c2410c', '#ea580c', '#f97316', '#fb923c'],
+        ['#4c1d95', '#5b21b6', '#7c3aed', '#8b5cf6', '#a78bfa'],
+        ['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'],
+        ['#166534', '#15803d', '#16a34a', '#22c55e', '#4ade80'],
+        ['#92400e', '#b45309', '#d97706', '#f59e0b', '#fbbf24'],
+        ['#9f1239', '#be123c', '#e11d48', '#f43f5e', '#fb7185'],
+        ['#155e75', '#0e7490', '#0891b2', '#06b6d4', '#22d3ee'],
+        ['#312e81', '#3730a3', '#4338ca', '#6366f1', '#818cf8'],
+        ['#365314', '#4d7c0f', '#65a30d', '#84cc16', '#a3e635'],
+        ['#701a75', '#86198f', '#a21caf', '#c026d3', '#d946ef'],
+        ['#075985', '#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'],
+        ['#14532d', '#166534', '#15803d', '#16a34a', '#34d399'],
+        ['#78350f', '#92400e', '#a16207', '#ca8a04', '#eab308'],
+        ['#831843', '#9d174d', '#be185d', '#db2777', '#f472b6'],
+        ['#7c2d12', '#9a3412', '#c2410c', '#ea580c', '#fdba74'],
+        ['#3f6212', '#4d7c0f', '#65a30d', '#84cc16', '#bef264'],
+        ['#164e63', '#155e75', '#0e7490', '#0891b2', '#67e8f9'],
+        ['#581c87', '#6b21a8', '#7e22ce', '#9333ea', '#c084fc']
+      ];
+    }
+
+    getReadableTextColor(color) {
+      const hex = String(color || '').trim();
+      if (!/^#([0-9a-f]{6})$/i.test(hex)) return '#ffffff';
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      return luminance > 0.62 ? '#0f172a' : '#ffffff';
+    }
+
+    getGroupPaletteColor(entry) {
+      const groupingPath = this.getGroupingPathSegments(entry?.sourceRow);
+      const groupLevel = Math.max(0, Number(entry?.groupLevel) || 0);
+      const effectivePath = groupingPath.length
+        ? groupingPath.slice(0, Math.min(groupLevel + 1, groupingPath.length))
+        : [entry?.groupSegment || {}];
+      const rootKey = effectivePath.length
+        ? this.getGroupPathKey(effectivePath, 0)
+        : String(entry?.groupSegment?.key || 'group');
+      const families = this.getGroupingColorFamilies();
+      const family = families[this.hashText(rootKey) % families.length];
+
+      let shadeIndex = 1 + (this.hashText(`${rootKey}|root`) % 2);
+      for (let index = 1; index < effectivePath.length; index += 1) {
+        const segmentKey = this.getGroupPathKey(effectivePath, index);
+        const step = (this.hashText(`${segmentKey}|shade`) % 3) - 1;
+        shadeIndex = clamp(shadeIndex + step, 0, family.length - 1);
+      }
+
+      return family[shadeIndex];
     }
 
     getGroupMeta(entry) {
       const segment = entry?.groupSegment || {};
       const fieldLabel = String(segment.fieldCaption || 'Group').trim() || 'Group';
       const valueLabel = String(segment.displayValue || segment.value || '(Blank)').trim() || '(Blank)';
-      const baseColor = this.getGroupPaletteColor(`${fieldLabel}|${valueLabel}|${entry?.groupLevel || 0}`);
+      const baseColor = this.getGroupPaletteColor(entry);
       return {
         label: `${fieldLabel}: ${valueLabel}`,
         shortLabel: valueLabel,
         color: baseColor,
-        railColor: this.tintColor(baseColor, 0.18)
+        textColor: this.getReadableTextColor(baseColor),
+        railColor: this.tintColor(baseColor, 0.22)
       };
     }
 
@@ -1245,7 +1302,7 @@
         const groupingPath = this.getGroupingPathSegments(row);
         const deepestSegment = groupingPath.length ? groupingPath[groupingPath.length - 1] : null;
         const rowGroupMeta = deepestSegment
-          ? this.getGroupMeta({ groupSegment: deepestSegment, groupLevel: groupingPath.length - 1 })
+          ? this.getGroupMeta({ groupSegment: deepestSegment, groupLevel: groupingPath.length - 1, sourceRow: row })
           : { railColor: this.tintColor('#4f7dbf', 0.18) };
 
         const labelRow = document.createElement('div');
@@ -1275,7 +1332,7 @@
           groupHeader.style.padding = `0 10px 0 ${10 + ((entry.groupLevel || 0) * 14)}px`;
           groupHeader.style.border = '0';
           groupHeader.style.background = groupMeta.color;
-          groupHeader.style.color = '#ffffff';
+          groupHeader.style.color = groupMeta.textColor;
           groupHeader.style.cursor = 'pointer';
           groupHeader.style.fontSize = '11px';
           groupHeader.style.fontWeight = '700';
