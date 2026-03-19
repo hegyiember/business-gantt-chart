@@ -556,21 +556,26 @@
 
       roots.forEach(walk);
 
-      this.visibleRows.forEach((row) => this.appendGroupedRenderRows(row));
+      let previousGroupingPath = [];
+      this.visibleRows.forEach((row) => {
+        previousGroupingPath = this.appendGroupedRenderRows(row, previousGroupingPath);
+      });
     }
 
-    appendGroupedRenderRows(row) {
-      const groupingPath = Array.isArray(row?.groupingPath) ? row.groupingPath : [];
-      const parentSegments = [];
+    appendGroupedRenderRows(row, previousGroupingPath) {
+      const groupingPath = this.getGroupingPathSegments(row);
+      let sharedPrefixLength = 0;
+      while (
+        sharedPrefixLength < groupingPath.length
+        && sharedPrefixLength < previousGroupingPath.length
+        && this.getGroupPathKey(groupingPath, sharedPrefixLength) === this.getGroupPathKey(previousGroupingPath, sharedPrefixLength)
+      ) {
+        sharedPrefixLength += 1;
+      }
 
-      groupingPath.forEach((segment, segmentIndex) => {
-        const segmentKey = String(segment?.key || '').trim() || `segment-${segmentIndex}`;
-        parentSegments.push(segmentKey);
-        const groupRowId = `group:${row.rowId}:${parentSegments.join('>')}`;
-        const parentGroupRowId = segmentIndex === 0 ? '' : `group:${row.rowId}:${parentSegments.slice(0, -1).join('>')}`;
-        const existingGroupRow = this.visibleRenderRows[this.visibleRenderRows.length - 1];
-        if (existingGroupRow && existingGroupRow.kind === 'group-header' && existingGroupRow.groupRowId === groupRowId) return;
-
+      for (let segmentIndex = sharedPrefixLength; segmentIndex < groupingPath.length; segmentIndex += 1) {
+        const groupRowId = `group:${row.mappingLineNo || 0}:${this.getGroupPathKey(groupingPath, segmentIndex)}`;
+        const parentGroupRowId = segmentIndex === 0 ? '' : `group:${row.mappingLineNo || 0}:${this.getGroupPathKey(groupingPath, segmentIndex - 1)}`;
         if (this.autoExpandNewGroupRows) this.expandedStatusGroups.add(groupRowId);
         this.visibleRenderRows.push({
           kind: 'group-header',
@@ -578,16 +583,14 @@
           groupRowId,
           parentGroupRowId,
           groupLevel: segmentIndex,
-          groupKey: segmentKey,
           sourceRow: row,
-          groupSegment: segment
+          groupSegment: groupingPath[segmentIndex]
         });
-      });
+      }
 
       let hiddenByCollapsedGroup = false;
       for (let index = 0; index < groupingPath.length; index += 1) {
-        const keyChain = groupingPath.slice(0, index + 1).map((segment) => String(segment?.key || '').trim() || `segment-${index}`).join('>');
-        const groupRowId = `group:${row.rowId}:${keyChain}`;
+        const groupRowId = `group:${row.mappingLineNo || 0}:${this.getGroupPathKey(groupingPath, index)}`;
         if (!this.expandedStatusGroups.has(groupRowId)) {
           hiddenByCollapsedGroup = true;
           break;
@@ -597,6 +600,8 @@
       if (!hiddenByCollapsedGroup) {
         this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, sourceRow: row, groupLevel: groupingPath.length });
       }
+
+      return groupingPath;
     }
 
     buildDerivedCaches() {
