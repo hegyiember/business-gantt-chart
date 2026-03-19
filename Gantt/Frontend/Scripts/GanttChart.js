@@ -751,15 +751,25 @@
       const track = document.createElement('div');
       track.className = 'lve-timeline-track';
       track.style.width = `${this.totalTimelineWidth}px`;
+      track.style.height = '52px';
+      track.style.position = 'relative';
 
       const topBand = document.createElement('div');
       topBand.className = 'lve-timeline-months';
+      topBand.style.position = 'relative';
+      topBand.style.width = `${this.totalTimelineWidth}px`;
+      topBand.style.height = '26px';
+
       const bottomBand = document.createElement('div');
       bottomBand.className = 'lve-timeline-days';
       bottomBand.setAttribute('data-grain', this.effectiveTimeGrain.toLowerCase());
+      bottomBand.style.position = 'relative';
+      bottomBand.style.width = `${this.totalTimelineWidth}px`;
+      bottomBand.style.height = '26px';
 
       let currentGroupKey = '';
       let topCell = null;
+      let topCellLeft = 0;
       this.timelineCols.forEach((col) => {
         const topMeta = this.getTopBandMeta(col);
         if (topMeta.key !== currentGroupKey) {
@@ -767,13 +777,18 @@
           topCell = document.createElement('div');
           topCell.className = 'month-cell';
           topCell.textContent = topMeta.label;
+          topCell.style.position = 'absolute';
+          topCell.style.left = `${col.x}px`;
           topCell.style.width = '0px';
+          topCellLeft = col.x;
           topBand.appendChild(topCell);
         }
-        if (topCell) topCell.style.width = `${parseFloat(topCell.style.width) + col.width}px`;
+        if (topCell) topCell.style.width = `${col.x + col.width - topCellLeft}px`;
 
         const cell = document.createElement('div');
         cell.className = `day-cell${this.isWeekendColumn(col) ? ' weekend' : ''}`;
+        cell.style.position = 'absolute';
+        cell.style.left = `${col.x}px`;
         cell.style.width = `${col.width}px`;
         cell.style.minWidth = `${col.width}px`;
         cell.style.maxWidth = `${col.width}px`;
