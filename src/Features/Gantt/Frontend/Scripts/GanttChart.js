@@ -251,8 +251,7 @@
 
     load(payload) {
       const previousExpandedRows = new Set(this.expandedRows);
-      const previousExpandedStatusGroups = new Set(this.expandedStatusGroups);
-      const previousStatusKeys = new Set((this.payload?.rows || []).map((row) => this.getNormalizedStatusValue(row)).filter(Boolean));
+      const previousExpandedGroupRows = new Set(this.expandedStatusGroups);
       const preserveExpandedState = !!this.payload;
       const previousViewState = preserveExpandedState ? this.captureViewState() : null;
 
@@ -262,6 +261,7 @@
       this.dirty = false;
       this.selectedBarId = '';
       this.dragState = null;
+      this.autoExpandNewGroupRows = !preserveExpandedState;
 
       const setup = this.payload.setup || {};
       this.timeGrain = preserveExpandedState
@@ -272,8 +272,9 @@
         : clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
       this.seedExpandedRows(previousExpandedRows, preserveExpandedState);
-      this.seedExpandedStatusGroups(previousExpandedStatusGroups, previousStatusKeys, preserveExpandedState);
+      this.expandedStatusGroups = preserveExpandedState ? previousExpandedGroupRows : new Set();
       this.render();
+      this.autoExpandNewGroupRows = false;
       if (preserveExpandedState) this.restoreViewState(previousViewState);
     }
 
@@ -291,24 +292,6 @@
 
       rows.forEach((row) => {
         if (row && row.isExpanded && validRowIds.has(row.rowId)) this.expandedRows.add(row.rowId);
-      });
-    }
-
-    seedExpandedStatusGroups(previousExpandedStatusGroups, previousStatusKeys, preserveExpandedState) {
-      const currentStatusKeys = new Set((this.payload?.rows || []).map((row) => this.getNormalizedStatusValue(row)).filter(Boolean));
-      this.expandedStatusGroups.clear();
-
-      if (!preserveExpandedState) {
-        currentStatusKeys.forEach((statusKey) => this.expandedStatusGroups.add(statusKey));
-        return;
-      }
-
-      previousExpandedStatusGroups.forEach((statusKey) => {
-        if (currentStatusKeys.has(statusKey)) this.expandedStatusGroups.add(statusKey);
-      });
-
-      currentStatusKeys.forEach((statusKey) => {
-        if (!previousStatusKeys.has(statusKey)) this.expandedStatusGroups.add(statusKey);
       });
     }
 
@@ -573,18 +556,52 @@
 
       roots.forEach(walk);
 
-      let previousStatusKey = '';
+      let previousGroupingPath = [];
       this.visibleRows.forEach((row) => {
-        const statusKey = this.getNormalizedStatusValue(row);
-        if (statusKey !== previousStatusKey) {
-          this.visibleRenderRows.push({ kind: 'status-header', rowId: `status:${statusKey || 'unspecified'}`, statusKey, sourceRow: row });
-          previousStatusKey = statusKey;
-        }
-
-        if (!statusKey || this.expandedStatusGroups.has(statusKey)) {
-          this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, statusKey, sourceRow: row });
-        }
+        previousGroupingPath = this.appendGroupedRenderRows(row, previousGroupingPath);
       });
+    }
+
+    appendGroupedRenderRows(row, previousGroupingPath) {
+      const groupingPath = this.getGroupingPathSegments(row);
+      let sharedPrefixLength = 0;
+      while (
+        sharedPrefixLength < groupingPath.length
+        && sharedPrefixLength < previousGroupingPath.length
+        && this.getGroupPathKey(groupingPath, sharedPrefixLength) === this.getGroupPathKey(previousGroupingPath, sharedPrefixLength)
+      ) {
+        sharedPrefixLength += 1;
+      }
+
+      for (let segmentIndex = sharedPrefixLength; segmentIndex < groupingPath.length; segmentIndex += 1) {
+        const groupRowId = `group:${row.mappingLineNo || 0}:${this.getGroupPathKey(groupingPath, segmentIndex)}`;
+        const parentGroupRowId = segmentIndex === 0 ? '' : `group:${row.mappingLineNo || 0}:${this.getGroupPathKey(groupingPath, segmentIndex - 1)}`;
+        if (this.autoExpandNewGroupRows) this.expandedStatusGroups.add(groupRowId);
+        this.visibleRenderRows.push({
+          kind: 'group-header',
+          rowId: groupRowId,
+          groupRowId,
+          parentGroupRowId,
+          groupLevel: segmentIndex,
+          sourceRow: row,
+          groupSegment: groupingPath[segmentIndex]
+        });
+      }
+
+      let hiddenByCollapsedGroup = false;
+      for (let index = 0; index < groupingPath.length; index += 1) {
+        const groupRowId = `group:${row.mappingLineNo || 0}:${this.getGroupPathKey(groupingPath, index)}`;
+        if (!this.expandedStatusGroups.has(groupRowId)) {
+          hiddenByCollapsedGroup = true;
+          break;
+        }
+      }
+
+      if (!hiddenByCollapsedGroup) {
+        this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, sourceRow: row, groupLevel: groupingPath.length });
+      }
+
+      return groupingPath;
     }
 
     buildDerivedCaches() {
@@ -1124,60 +1141,45 @@
       });
     }
 
-    getStatusDisplayValue(row) {
-      return String(row?.statusLabel || row?.statusValue || '').trim();
+    getGroupingPathSegments(row) {
+      return Array.isArray(row?.groupingPath) ? row.groupingPath.filter(Boolean) : [];
     }
 
-    getNormalizedStatusValue(row) {
-      return this.getStatusDisplayValue(row).toLowerCase();
-    }
-
-    isStatusGroupStart(index) {
-      const entry = this.visibleRenderRows[index];
-      if (!entry || entry.kind !== 'status-header') return false;
-      return true;
+    getGroupPathKey(path, index) {
+      return path
+        .slice(0, index + 1)
+        .map((segment, segmentIndex) => String(segment?.key || `${segment?.fieldId || segmentIndex}|${segment?.displayValue || '(Blank)'}`).trim())
+        .join('>');
     }
 
     getRenderRowTop(index) {
       return index * this.rowHeight;
     }
 
-    getStatusPaletteColor(normalized) {
+    getGroupPaletteColor(source) {
       const palette = ['#4f7dbf', '#f3a64a', '#6e8f66', '#b85c7b', '#7f6bb3', '#3e9a95', '#9a7a3e', '#5f8ea8'];
       let hash = 0;
-      const source = String(normalized || 'unspecified');
-      for (let index = 0; index < source.length; index += 1) {
-        hash = ((hash << 5) - hash + source.charCodeAt(index)) >>> 0;
+      const text = String(source || 'group');
+      for (let index = 0; index < text.length; index += 1) {
+        hash = ((hash << 5) - hash + text.charCodeAt(index)) >>> 0;
       }
       return palette[hash % palette.length];
     }
 
-    getStatusMeta(row) {
-      const displayLabel = this.getStatusDisplayValue(row) || 'Unspecified';
-      const normalized = displayLabel.toLowerCase();
-      const overrideColor = /^#([0-9a-f]{6})$/i.test(String(row?.colorValue || '').trim())
-        ? String(row.colorValue).trim()
-        : '';
-      const predefined = {
-        planned: { label: 'Planned', color: '#4f7dbf' },
-        'firm planned': { label: 'Firm Planned', color: '#6f8aa8' },
-        released: { label: 'Released', color: '#f3a64a' },
-        finished: { label: 'Finished', color: '#6e8f66' }
-      };
-      const base = predefined[normalized] || {
-        label: displayLabel,
-        color: overrideColor || this.getStatusPaletteColor(normalized)
-      };
-
+    getGroupMeta(entry) {
+      const segment = entry?.groupSegment || {};
+      const fieldLabel = String(segment.fieldCaption || 'Group').trim() || 'Group';
+      const valueLabel = String(segment.displayValue || segment.value || '(Blank)').trim() || '(Blank)';
+      const baseColor = this.getGroupPaletteColor(`${fieldLabel}|${valueLabel}|${entry?.groupLevel || 0}`);
       return {
-        label: base.label,
-        color: base.color,
-        railColor: this.tintColor(base.color, 0.18),
-        normalized
+        label: `${fieldLabel}: ${valueLabel}`,
+        shortLabel: valueLabel,
+        color: baseColor,
+        railColor: this.tintColor(baseColor, 0.18)
       };
     }
 
-    createRowContentWrap(row, rowHeight) {
+    createRowContentWrap(row, rowHeight, indentLevel) {
       const wrap = document.createElement('div');
       wrap.style.display = 'flex';
       wrap.style.alignItems = 'center';
@@ -1185,7 +1187,7 @@
       wrap.style.minWidth = '0';
       wrap.style.width = '100%';
       wrap.style.height = `${rowHeight}px`;
-      wrap.style.paddingLeft = `${Math.max(0, Number(row && row.level || 0) * 14)}px`;
+      wrap.style.paddingLeft = `${Math.max(0, ((Number(row?.level) || 0) + (Number(indentLevel) || 0)) * 14)}px`;
       wrap.style.paddingRight = '8px';
 
       if (row && row.hasChildren) {
@@ -1240,7 +1242,11 @@
 
         const row = entry.sourceRow;
         const rowTop = this.getRenderRowTop(index);
-        const statusMeta = this.getStatusMeta(row);
+        const groupingPath = this.getGroupingPathSegments(row);
+        const deepestSegment = groupingPath.length ? groupingPath[groupingPath.length - 1] : null;
+        const rowGroupMeta = deepestSegment
+          ? this.getGroupMeta({ groupSegment: deepestSegment, groupLevel: groupingPath.length - 1 })
+          : { railColor: this.tintColor('#4f7dbf', 0.18) };
 
         const labelRow = document.createElement('div');
         labelRow.className = 'lve-label-row';
@@ -1254,46 +1260,46 @@
         labelRow.dataset.rowId = entry.rowId;
         labelRow.dataset.rowKind = entry.kind;
 
-        if (entry.kind === 'status-header') {
+        if (entry.kind === 'group-header') {
+          const groupMeta = this.getGroupMeta(entry);
           labelRow.style.display = 'flex';
           labelRow.style.alignItems = 'stretch';
-          labelRow.style.background = statusMeta.color;
+          labelRow.style.background = groupMeta.color;
 
-          const statusHeader = document.createElement('button');
-          statusHeader.type = 'button';
-          statusHeader.style.display = 'flex';
-          statusHeader.style.alignItems = 'center';
-          statusHeader.style.gap = '8px';
-          statusHeader.style.width = '100%';
-          statusHeader.style.padding = '0 10px';
-          statusHeader.style.border = '0';
-          statusHeader.style.background = statusMeta.color;
-          statusHeader.style.color = '#ffffff';
-          statusHeader.style.cursor = 'pointer';
-          statusHeader.style.fontSize = '11px';
-          statusHeader.style.fontWeight = '700';
-          statusHeader.style.textAlign = 'left';
+          const groupHeader = document.createElement('button');
+          groupHeader.type = 'button';
+          groupHeader.style.display = 'flex';
+          groupHeader.style.alignItems = 'center';
+          groupHeader.style.gap = '8px';
+          groupHeader.style.width = '100%';
+          groupHeader.style.padding = `0 10px 0 ${10 + ((entry.groupLevel || 0) * 14)}px`;
+          groupHeader.style.border = '0';
+          groupHeader.style.background = groupMeta.color;
+          groupHeader.style.color = '#ffffff';
+          groupHeader.style.cursor = 'pointer';
+          groupHeader.style.fontSize = '11px';
+          groupHeader.style.fontWeight = '700';
+          groupHeader.style.textAlign = 'left';
 
           const expander = document.createElement('span');
-          expander.textContent = this.expandedStatusGroups.has(entry.statusKey) ? '▾' : '▸';
+          expander.textContent = this.expandedStatusGroups.has(entry.groupRowId) ? '▾' : '▸';
           expander.style.flex = '0 0 auto';
 
           const text = document.createElement('span');
-          text.textContent = statusMeta.label;
+          text.textContent = groupMeta.label;
           text.style.minWidth = '0';
           text.style.overflow = 'hidden';
           text.style.whiteSpace = 'nowrap';
           text.style.textOverflow = 'ellipsis';
 
-          statusHeader.appendChild(expander);
-          statusHeader.appendChild(text);
-          statusHeader.addEventListener('click', () => {
-            if (this.expandedStatusGroups.has(entry.statusKey)) this.expandedStatusGroups.delete(entry.statusKey);
-            else this.expandedStatusGroups.add(entry.statusKey);
-            this.log('Interaction', 'info', 'Status group toggle', { status: statusMeta.label, expanded: this.expandedStatusGroups.has(entry.statusKey) });
+          groupHeader.appendChild(expander);
+          groupHeader.appendChild(text);
+          groupHeader.addEventListener('click', () => {
+            if (this.expandedStatusGroups.has(entry.groupRowId)) this.expandedStatusGroups.delete(entry.groupRowId);
+            else this.expandedStatusGroups.add(entry.groupRowId);
             this.render();
           });
-          labelRow.appendChild(statusHeader);
+          labelRow.appendChild(groupHeader);
 
           const blankGridRow = document.createElement('div');
           blankGridRow.style.position = 'absolute';
@@ -1315,11 +1321,11 @@
           const railLine = document.createElement('div');
           railLine.style.width = '18px';
           railLine.style.height = '100%';
-          railLine.style.background = statusMeta.railColor;
+          railLine.style.background = rowGroupMeta.railColor;
           rail.appendChild(railLine);
 
           labelRow.appendChild(rail);
-          labelRow.appendChild(this.createRowContentWrap(row, this.rowHeight));
+          labelRow.appendChild(this.createRowContentWrap(row, this.rowHeight, entry.groupLevel || 0));
 
           const hLine = document.createElement('div');
           hLine.className = 'hline';

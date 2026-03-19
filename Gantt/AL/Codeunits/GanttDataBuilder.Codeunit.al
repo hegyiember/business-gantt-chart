@@ -97,6 +97,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
     var
         MappingLine: Record "DGOG Gantt Mapping Line";
         MappingLineJson: JsonObject;
+        GroupingLinesJson: JsonArray;
     begin
         MappingLine.SetRange("Setup ID", SetupId);
         MappingLine.SetRange("View Code", ViewCode);
@@ -105,9 +106,12 @@ codeunit 71891733 "DGOG Gantt Data Builder"
 
         repeat
             Clear(MappingLineJson);
+            Clear(GroupingLinesJson);
+            BuildGroupingLinesJson(MappingLine, GroupingLinesJson);
             MappingLineJson.Add('lineNo', MappingLine."Line No.");
             MappingLineJson.Add('startDateFieldId', MappingLine."Start Date Field ID");
             MappingLineJson.Add('endDateFieldId', MappingLine."End Date Field ID");
+            MappingLineJson.Add('groupingLines', GroupingLinesJson);
             MappingLinesJson.Add(MappingLineJson);
         until MappingLine.Next() = 0;
     end;
@@ -205,6 +209,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
     var
         TooltipFields: JsonArray;
         TooltipTitle: Text;
+        GroupingPathJson: JsonArray;
     begin
         TooltipTitle := ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Tooltip Title Field ID");
 
@@ -228,8 +233,63 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         RowJson.Add('sequenceValue', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Sequence Field ID"));
         RowJson.Add('tooltipTitle', TooltipTitle);
 
+        BuildGroupingPathJson(SourceRef, MappingLine, GroupingPathJson);
+        RowJson.Add('groupingPath', GroupingPathJson);
+
         BuildTooltipFields(SourceRef, MappingLine, TooltipFields);
         RowJson.Add('tooltipFields', TooltipFields);
+    end;
+
+    local procedure BuildGroupingLinesJson(MappingLine: Record "DGOG Gantt Mapping Line"; var GroupingLinesJson: JsonArray)
+    var
+        GroupingLine: Record "DGOG Gantt Grouping Line";
+        GroupingLineJson: JsonObject;
+    begin
+        GroupingLine.SetRange("Setup ID", MappingLine."Setup ID");
+        GroupingLine.SetRange("View Code", MappingLine."View Code");
+        GroupingLine.SetRange("Mapping Line No.", MappingLine."Line No.");
+        GroupingLine.SetCurrentKey("Setup ID", "View Code", "Mapping Line No.", "Line No.");
+        if not GroupingLine.FindSet() then
+            exit;
+
+        repeat
+            Clear(GroupingLineJson);
+            GroupingLineJson.Add('lineNo', GroupingLine."Line No.");
+            GroupingLineJson.Add('fieldId', GroupingLine."Group Field ID");
+            GroupingLineJson.Add('fieldCaption', ValidationHelper.GetFieldCaption(MappingLine."Source Table ID", GroupingLine."Group Field ID"));
+            GroupingLinesJson.Add(GroupingLineJson);
+        until GroupingLine.Next() = 0;
+    end;
+
+    local procedure BuildGroupingPathJson(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; var GroupingPathJson: JsonArray)
+    var
+        GroupingLine: Record "DGOG Gantt Grouping Line";
+        GroupJson: JsonObject;
+        GroupValueText: Text;
+        GroupDisplayText: Text;
+    begin
+        GroupingLine.SetRange("Setup ID", MappingLine."Setup ID");
+        GroupingLine.SetRange("View Code", MappingLine."View Code");
+        GroupingLine.SetRange("Mapping Line No.", MappingLine."Line No.");
+        GroupingLine.SetCurrentKey("Setup ID", "View Code", "Mapping Line No.", "Line No.");
+        if not GroupingLine.FindSet() then
+            exit;
+
+        repeat
+            GroupValueText := ValidationHelper.GetFieldValueAsText(SourceRef, GroupingLine."Group Field ID");
+            GroupDisplayText := ValidationHelper.GetFieldValueAsDisplayText(SourceRef, GroupingLine."Group Field ID");
+            if GroupDisplayText = '' then
+                GroupDisplayText := '(Blank)';
+
+            Clear(GroupJson);
+            GroupJson.Add('lineNo', GroupingLine."Line No.");
+            GroupJson.Add('fieldId', GroupingLine."Group Field ID");
+            GroupJson.Add('fieldCaption', ValidationHelper.GetFieldCaption(MappingLine."Source Table ID", GroupingLine."Group Field ID"));
+            GroupJson.Add('value', GroupValueText);
+            GroupJson.Add('displayValue', GroupDisplayText);
+            GroupJson.Add('key', StrSubstNo('%1|%2', GroupingLine."Group Field ID", GroupValueText));
+            GroupingPathJson.Add(GroupJson);
+        until GroupingLine.Next() = 0;
     end;
 
     local procedure BuildBarJson(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"; RowId: Text; Level: Integer; var BarJson: JsonObject; var StartValue: DateTime; var EndValue: DateTime)
