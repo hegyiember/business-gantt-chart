@@ -1276,9 +1276,10 @@
           const xStart = this.dateToX(start);
           const xEnd = this.dateToX(end);
           const width = Math.max(6, xEnd - xStart);
-          const isChild = (bar.depth || 0) > 0 || (row.level || 0) > 0;
-          const top = rowIndex * this.rowHeight + (isChild ? 10 : 8);
-          const height = isChild ? 16 : 20;
+          const metrics = this.getBarVerticalMetrics(bar, rowIndex);
+          const isChild = metrics.isChild;
+          const top = metrics.top;
+          const height = metrics.height;
 
           const barEl = document.createElement('div');
           barEl.className = 'lve-bar';
