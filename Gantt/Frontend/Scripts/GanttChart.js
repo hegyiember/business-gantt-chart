@@ -543,8 +543,6 @@
       this.visibleRenderRows = [];
       const walk = (row) => {
         this.visibleRows.push(row);
-        this.visibleRenderRows.push({ kind: 'status-header', rowId: row.rowId, statusKey: this.getNormalizedStatusValue(row), sourceRow: row });
-        this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, statusKey: this.getNormalizedStatusValue(row), sourceRow: row });
 
         const children = this.childRowsByParent.get(row.rowId) || [];
         if (!children.length || !row.hasChildren || !this.expandedRows.has(row.rowId)) return;
@@ -553,10 +551,17 @@
 
       roots.forEach(walk);
 
-      this.visibleRenderRows = this.visibleRenderRows.filter((entry, index, items) => {
-        if (entry.kind !== 'status-header') return true;
-        const previous = items[index - 1];
-        return !previous || previous.kind !== 'data' || previous.statusKey !== entry.statusKey;
+      let previousStatusKey = '';
+      this.visibleRows.forEach((row) => {
+        const statusKey = this.getNormalizedStatusValue(row);
+        if (statusKey !== previousStatusKey) {
+          this.visibleRenderRows.push({ kind: 'status-header', rowId: `status:${statusKey || 'unspecified'}`, statusKey, sourceRow: row });
+          previousStatusKey = statusKey;
+        }
+
+        if (!statusKey || this.expandedStatusGroups.has(statusKey)) {
+          this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, statusKey, sourceRow: row });
+        }
       });
     }
 

@@ -206,7 +206,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         TooltipFields: JsonArray;
         TooltipTitle: Text;
     begin
-        TooltipTitle := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Tooltip Title Field ID");
+        TooltipTitle := ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Tooltip Title Field ID");
 
         RowJson.Add('rowId', RowId);
         RowJson.Add('parentRowId', ParentRowId);
@@ -215,7 +215,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         RowJson.Add('sourceTableId', MappingLine."Source Table ID");
         RowJson.Add('sourceRecordId', Format(SourceRef.RecordId));
         RowJson.Add('keyText', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Key Field ID"));
-        RowJson.Add('descriptionText', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Description Field ID"));
+        RowJson.Add('descriptionText', ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Description Field ID"));
         RowJson.Add('level', Level);
         RowJson.Add('hasChildren', HasChildren and MappingLine."Is Expandable");
         RowJson.Add('isExpanded', false);
@@ -249,7 +249,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         StatusText := ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Status Field ID");
         ColorText := ResolveBarColor(StatusText, ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Color Override Field ID"));
         TrackColorText := ResolveTrackColor(StatusText);
-        LabelText := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Label Override Field ID");
+        LabelText := ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Label Override Field ID");
         if LabelText = '' then
             LabelText := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Key Field ID");
         DueValue := ValidationHelper.GetFieldDateTime(SourceRef, MappingLine."Due Date Field ID");
@@ -269,7 +269,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         BarJson.Add('color', ColorText);
         BarJson.Add('trackColor', TrackColorText);
         BarJson.Add('label', LabelText);
-        BarJson.Add('tooltipTitle', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Tooltip Title Field ID"));
+        BarJson.Add('tooltipTitle', ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Tooltip Title Field ID"));
         BarJson.Add('isEditable', MappingLine."Is Editable");
         BarJson.Add('resourceKey', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Resource Group Field ID"));
         BarJson.Add('conflictGroupKey', ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Conflict Group Field ID"));
