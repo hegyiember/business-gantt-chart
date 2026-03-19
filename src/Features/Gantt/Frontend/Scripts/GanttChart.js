@@ -251,8 +251,7 @@
 
     load(payload) {
       const previousExpandedRows = new Set(this.expandedRows);
-      const previousExpandedStatusGroups = new Set(this.expandedStatusGroups);
-      const previousStatusKeys = new Set((this.payload?.rows || []).map((row) => this.getNormalizedStatusValue(row)).filter(Boolean));
+      const previousExpandedGroupRows = new Set(this.expandedStatusGroups);
       const preserveExpandedState = !!this.payload;
       const previousViewState = preserveExpandedState ? this.captureViewState() : null;
 
@@ -262,6 +261,7 @@
       this.dirty = false;
       this.selectedBarId = '';
       this.dragState = null;
+      this.autoExpandNewGroupRows = !preserveExpandedState;
 
       const setup = this.payload.setup || {};
       this.timeGrain = preserveExpandedState
@@ -272,8 +272,9 @@
         : clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
       this.seedExpandedRows(previousExpandedRows, preserveExpandedState);
-      this.seedExpandedStatusGroups(previousExpandedStatusGroups, previousStatusKeys, preserveExpandedState);
+      this.expandedStatusGroups = preserveExpandedState ? previousExpandedGroupRows : new Set();
       this.render();
+      this.autoExpandNewGroupRows = false;
       if (preserveExpandedState) this.restoreViewState(previousViewState);
     }
 
@@ -291,24 +292,6 @@
 
       rows.forEach((row) => {
         if (row && row.isExpanded && validRowIds.has(row.rowId)) this.expandedRows.add(row.rowId);
-      });
-    }
-
-    seedExpandedStatusGroups(previousExpandedStatusGroups, previousStatusKeys, preserveExpandedState) {
-      const currentStatusKeys = new Set((this.payload?.rows || []).map((row) => this.getNormalizedStatusValue(row)).filter(Boolean));
-      this.expandedStatusGroups.clear();
-
-      if (!preserveExpandedState) {
-        currentStatusKeys.forEach((statusKey) => this.expandedStatusGroups.add(statusKey));
-        return;
-      }
-
-      previousExpandedStatusGroups.forEach((statusKey) => {
-        if (currentStatusKeys.has(statusKey)) this.expandedStatusGroups.add(statusKey);
-      });
-
-      currentStatusKeys.forEach((statusKey) => {
-        if (!previousStatusKeys.has(statusKey)) this.expandedStatusGroups.add(statusKey);
       });
     }
 
