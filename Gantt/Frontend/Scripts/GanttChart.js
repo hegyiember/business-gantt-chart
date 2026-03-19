@@ -1059,7 +1059,7 @@
       const viewportHeight = this.ui.scrollBody?.clientHeight || 0;
       const start = Math.max(0, Math.floor(scrollTop / this.rowHeight) - this.rowOverscan);
       const end = Math.min(
-        this.visibleRows.length,
+        this.visibleRenderRows.length,
         Math.ceil((scrollTop + viewportHeight) / this.rowHeight) + this.rowOverscan
       );
       return { start, end };
