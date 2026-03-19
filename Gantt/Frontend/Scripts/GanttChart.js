@@ -586,15 +586,16 @@
       }
 
       this.effectiveTimeGrain = this.resolveEffectiveTimeGrain(bars);
-      const alignedStart = this.alignDateToGrain(rangeStart, this.effectiveTimeGrain);
+      const renderGrain = this.getTimelineRenderGrain();
+      const alignedStart = this.alignDateToGrain(rangeStart, renderGrain);
       let cursor = new Date(alignedStart.getTime());
-      const alignedEnd = this.advanceDateByGrain(rangeEnd, this.effectiveTimeGrain, 1);
+      const alignedEnd = this.advanceDateByGrain(rangeEnd, renderGrain, 1);
       const columns = [];
       let totalWidth = 0;
 
       while (cursor < alignedEnd) {
-        const next = this.advanceDateByGrain(cursor, this.effectiveTimeGrain, 1);
-        const width = this.getColumnWidth(this.effectiveTimeGrain);
+        const next = this.advanceDateByGrain(cursor, renderGrain, 1);
+        const width = this.getColumnWidth(renderGrain);
         columns.push({ start: new Date(cursor.getTime()), end: new Date(next.getTime()), width, x: totalWidth });
         totalWidth += width;
         cursor = next;
@@ -611,6 +612,10 @@
       });
       this.timelineStart = alignedStart;
       this.timelineEnd = alignedEnd;
+    }
+
+    getTimelineRenderGrain() {
+      return this.effectiveTimeGrain === 'Hour' ? 'Day' : this.effectiveTimeGrain;
     }
 
     resolveEffectiveTimeGrain(bars) {
@@ -633,14 +638,14 @@
       const zoomFactor = this.zoom / 100;
       switch (grain) {
         case 'Hour':
-          return 64 * zoomFactor;
+        case 'Day':
+          return 32 * zoomFactor;
         case 'Week':
           return 96 * zoomFactor;
         case 'Month':
           return 140 * zoomFactor;
         case 'Year':
           return 180 * zoomFactor;
-        case 'Day':
         default:
           return 32 * zoomFactor;
       }
@@ -684,12 +689,8 @@
       const date = col.start;
       switch (this.effectiveTimeGrain) {
         case 'Hour':
-          return {
-            key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
-            label: date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' })
-          };
-        case 'Week':
         case 'Day':
+        case 'Week':
           return {
             key: `${date.getFullYear()}-${date.getMonth()}`,
             label: date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
@@ -708,11 +709,15 @@
       }
     }
 
+    getHourlyDayLabel(date) {
+      return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+    }
+
     getBottomBandLabel(col) {
       const date = col.start;
       switch (this.effectiveTimeGrain) {
         case 'Hour':
-          return date.getHours() < 12 ? '12:00 AM' : '12:00 PM';
+          return this.getHourlyDayLabel(date);
         case 'Week':
           return `W${getIsoWeek(date)}`;
         case 'Month':
@@ -735,9 +740,8 @@
       const date = col.start;
       switch (this.effectiveTimeGrain) {
         case 'Hour':
-          return date.getHours() === 0;
-        case 'Week':
         case 'Day':
+        case 'Week':
           return date.getDate() === 1;
         case 'Month':
           return date.getMonth() === 0;
@@ -747,11 +751,67 @@
       }
     }
 
+    renderHourlyDayCell(col) {
+      const cell = document.createElement('div');
+      cell.className = `day-cell hourly-day-cell${this.isWeekendColumn(col) ? ' weekend' : ''}`;
+      cell.style.position = 'absolute';
+      cell.style.left = `${col.x}px`;
+      cell.style.width = `${col.width}px`;
+      cell.style.minWidth = `${col.width}px`;
+      cell.style.maxWidth = `${col.width}px`;
+      cell.style.height = '34px';
+      cell.style.display = 'flex';
+      cell.style.flexDirection = 'column';
+      cell.style.justifyContent = 'space-between';
+      cell.style.paddingTop = '2px';
+      cell.style.lineHeight = 'normal';
+      cell.title = `${col.start.toLocaleString()} – ${col.end.toLocaleString()}`;
+
+      const dayLabel = document.createElement('div');
+      dayLabel.textContent = this.getHourlyDayLabel(col.start);
+      dayLabel.style.fontSize = '11px';
+      dayLabel.style.fontWeight = '600';
+      dayLabel.style.lineHeight = '14px';
+      dayLabel.style.padding = '0 4px';
+      dayLabel.style.whiteSpace = 'nowrap';
+      dayLabel.style.overflow = 'hidden';
+      dayLabel.style.textOverflow = 'ellipsis';
+      cell.appendChild(dayLabel);
+
+      const halves = document.createElement('div');
+      halves.style.display = 'grid';
+      halves.style.gridTemplateColumns = '1fr 1fr';
+      halves.style.alignItems = 'stretch';
+      halves.style.height = '18px';
+      halves.style.marginTop = 'auto';
+      halves.style.borderTop = '1px solid var(--gantt-border)';
+      halves.style.fontSize = '10px';
+      halves.style.color = 'var(--gantt-subtext)';
+
+      ['12 AM', '12 PM'].forEach((labelText, index) => {
+        const half = document.createElement('div');
+        half.textContent = labelText;
+        half.style.display = 'flex';
+        half.style.alignItems = 'center';
+        half.style.justifyContent = 'center';
+        half.style.whiteSpace = 'nowrap';
+        half.style.overflow = 'hidden';
+        half.style.textOverflow = 'ellipsis';
+        if (index === 0) half.style.borderRight = '1px solid var(--gantt-border)';
+        halves.appendChild(half);
+      });
+
+      cell.appendChild(halves);
+      return cell;
+    }
+
     renderTimelineHeader() {
+      const isHourlyOverlay = this.effectiveTimeGrain === 'Hour';
+      const bottomBandHeight = isHourlyOverlay ? 34 : 26;
       const track = document.createElement('div');
       track.className = 'lve-timeline-track';
       track.style.width = `${this.totalTimelineWidth}px`;
-      track.style.height = '52px';
+      track.style.height = `${26 + bottomBandHeight}px`;
       track.style.position = 'relative';
 
       const topBand = document.createElement('div');
@@ -765,7 +825,7 @@
       bottomBand.setAttribute('data-grain', this.effectiveTimeGrain.toLowerCase());
       bottomBand.style.position = 'relative';
       bottomBand.style.width = `${this.totalTimelineWidth}px`;
-      bottomBand.style.height = '26px';
+      bottomBand.style.height = `${bottomBandHeight}px`;
 
       let currentGroupKey = '';
       let topCell = null;
@@ -784,6 +844,11 @@
           topBand.appendChild(topCell);
         }
         if (topCell) topCell.style.width = `${col.x + col.width - topCellLeft}px`;
+
+        if (isHourlyOverlay) {
+          bottomBand.appendChild(this.renderHourlyDayCell(col));
+          return;
+        }
 
         const cell = document.createElement('div');
         cell.className = `day-cell${this.isWeekendColumn(col) ? ' weekend' : ''}`;
@@ -911,6 +976,20 @@
           bg.appendChild(past);
         }
       });
+
+      if (this.effectiveTimeGrain === 'Hour' && this.timelineCols.length) {
+        const halfDayOverlay = document.createElement('div');
+        halfDayOverlay.style.position = 'absolute';
+        halfDayOverlay.style.left = '0';
+        halfDayOverlay.style.top = '0';
+        halfDayOverlay.style.width = `${this.totalTimelineWidth}px`;
+        halfDayOverlay.style.height = `${this.totalContentHeight}px`;
+        halfDayOverlay.style.pointerEvents = 'none';
+        halfDayOverlay.style.backgroundImage = 'linear-gradient(to right, transparent calc(50% - 0.5px), rgba(207, 216, 228, 0.95) calc(50% - 0.5px), rgba(207, 216, 228, 0.95) calc(50% + 0.5px), transparent calc(50% + 0.5px))';
+        halfDayOverlay.style.backgroundSize = `${this.timelineCols[0].width}px 100%`;
+        halfDayOverlay.style.backgroundRepeat = 'repeat';
+        bg.appendChild(halfDayOverlay);
+      }
 
       const todayLine = document.createElement('div');
       todayLine.className = 'today-line';
