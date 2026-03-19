@@ -633,7 +633,7 @@
       const zoomFactor = this.zoom / 100;
       switch (grain) {
         case 'Hour':
-          return 16 * zoomFactor;
+          return 64 * zoomFactor;
         case 'Week':
           return 96 * zoomFactor;
         case 'Month':
@@ -648,8 +648,10 @@
 
     alignDateToGrain(date, grain) {
       switch (grain) {
-        case 'Hour':
-          return new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), 0, 0, 0);
+        case 'Hour': {
+          const alignedHour = date.getHours() < 12 ? 0 : 12;
+          return new Date(date.getFullYear(), date.getMonth(), date.getDate(), alignedHour, 0, 0, 0);
+        }
         case 'Week':
           return startOfWeek(date);
         case 'Month':
@@ -665,7 +667,7 @@
     advanceDateByGrain(date, grain, amount) {
       switch (grain) {
         case 'Hour':
-          return new Date(this.alignDateToGrain(date, 'Hour').getTime() + amount * 3600 * 1000);
+          return new Date(this.alignDateToGrain(date, 'Hour').getTime() + amount * 12 * 3600 * 1000);
         case 'Week':
           return addDays(startOfWeek(date), amount * 7);
         case 'Month':
@@ -684,7 +686,7 @@
         case 'Hour':
           return {
             key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
-            label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+            label: date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' })
           };
         case 'Week':
         case 'Day':
@@ -710,7 +712,7 @@
       const date = col.start;
       switch (this.effectiveTimeGrain) {
         case 'Hour':
-          return `${String(date.getHours()).padStart(2, '0')}:00`;
+          return date.getHours() < 12 ? '12:00 AM' : '12:00 PM';
         case 'Week':
           return `W${getIsoWeek(date)}`;
         case 'Month':
