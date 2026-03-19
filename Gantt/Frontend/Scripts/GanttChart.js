@@ -324,6 +324,17 @@
       return this.xToDate(body.scrollLeft + body.clientWidth / 2);
     }
 
+    captureViewState() {
+      const body = this.ui.scrollBody;
+      return {
+        timeGrain: this.timeGrain,
+        zoom: this.zoom,
+        centerDate: this.getViewportCenterDate(),
+        scrollLeft: body?.scrollLeft || 0,
+        scrollTop: body?.scrollTop || 0
+      };
+    }
+
     restoreViewportCenter(centerDate) {
       const body = this.ui.scrollBody;
       if (!body || !centerDate || !this.timelineStart || !this.timelineEnd) {
@@ -332,6 +343,25 @@
       }
       const desiredScrollLeft = this.dateToX(centerDate) - body.clientWidth / 2;
       body.scrollLeft = clamp(desiredScrollLeft, 0, Math.max(0, this.totalTimelineWidth - body.clientWidth));
+      this.lastScrollLeft = body.scrollLeft;
+      this.syncTimelineHeaderPosition();
+      this.syncLabelViewport();
+      this.syncMiniMapViewport();
+    }
+
+    restoreViewState(viewState) {
+      const body = this.ui.scrollBody;
+      if (!body || !viewState) return;
+
+      const maxScrollTop = Math.max(0, this.totalContentHeight - body.clientHeight);
+      body.scrollTop = clamp(viewState.scrollTop || 0, 0, maxScrollTop);
+
+      if (viewState.centerDate) {
+        this.restoreViewportCenter(viewState.centerDate);
+        return;
+      }
+
+      body.scrollLeft = clamp(viewState.scrollLeft || 0, 0, Math.max(0, this.totalTimelineWidth - body.clientWidth));
       this.lastScrollLeft = body.scrollLeft;
       this.syncTimelineHeaderPosition();
       this.syncLabelViewport();
