@@ -103,6 +103,8 @@
       this.rowHeight = 36;
       this.rowOverscan = 12;
       this.renderFrame = 0;
+      this.dependencyRenderFrame = 0;
+      this.lastDependencyDebugSignature = '';
     }
 
     log(category, level, message, context) {
@@ -302,7 +304,11 @@
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
       this.render();
       this.restoreViewportCenter(centerDate);
-      window.requestAnimationFrame(() => this.syncTimelineHeaderPosition());
+      window.requestAnimationFrame(() => {
+        this.syncTimelineHeaderPosition();
+        this.syncLabelViewport();
+        this.syncMiniMapViewport();
+      });
       this.log('View', 'info', 'Zoom changed', { zoom: this.zoom, grain: this.timeGrain, effectiveGrain: this.effectiveTimeGrain });
     }
 
@@ -627,7 +633,7 @@
       const zoomFactor = this.zoom / 100;
       switch (grain) {
         case 'Hour':
-          return 16 * zoomFactor;
+          return 64 * zoomFactor;
         case 'Week':
           return 96 * zoomFactor;
         case 'Month':
@@ -642,8 +648,10 @@
 
     alignDateToGrain(date, grain) {
       switch (grain) {
-        case 'Hour':
-          return new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), 0, 0, 0);
+        case 'Hour': {
+          const alignedHour = date.getHours() < 12 ? 0 : 12;
+          return new Date(date.getFullYear(), date.getMonth(), date.getDate(), alignedHour, 0, 0, 0);
+        }
         case 'Week':
           return startOfWeek(date);
         case 'Month':
@@ -659,7 +667,7 @@
     advanceDateByGrain(date, grain, amount) {
       switch (grain) {
         case 'Hour':
-          return new Date(this.alignDateToGrain(date, 'Hour').getTime() + amount * 3600 * 1000);
+          return new Date(this.alignDateToGrain(date, 'Hour').getTime() + amount * 12 * 3600 * 1000);
         case 'Week':
           return addDays(startOfWeek(date), amount * 7);
         case 'Month':
@@ -678,7 +686,7 @@
         case 'Hour':
           return {
             key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
-            label: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+            label: date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' })
           };
         case 'Week':
         case 'Day':
@@ -704,7 +712,7 @@
       const date = col.start;
       switch (this.effectiveTimeGrain) {
         case 'Hour':
-          return `${String(date.getHours()).padStart(2, '0')}:00`;
+          return date.getHours() < 12 ? '12:00 AM' : '12:00 PM';
         case 'Week':
           return `W${getIsoWeek(date)}`;
         case 'Month':
@@ -743,15 +751,25 @@
       const track = document.createElement('div');
       track.className = 'lve-timeline-track';
       track.style.width = `${this.totalTimelineWidth}px`;
+      track.style.height = '52px';
+      track.style.position = 'relative';
 
       const topBand = document.createElement('div');
       topBand.className = 'lve-timeline-months';
+      topBand.style.position = 'relative';
+      topBand.style.width = `${this.totalTimelineWidth}px`;
+      topBand.style.height = '26px';
+
       const bottomBand = document.createElement('div');
       bottomBand.className = 'lve-timeline-days';
       bottomBand.setAttribute('data-grain', this.effectiveTimeGrain.toLowerCase());
+      bottomBand.style.position = 'relative';
+      bottomBand.style.width = `${this.totalTimelineWidth}px`;
+      bottomBand.style.height = '26px';
 
       let currentGroupKey = '';
       let topCell = null;
+      let topCellLeft = 0;
       this.timelineCols.forEach((col) => {
         const topMeta = this.getTopBandMeta(col);
         if (topMeta.key !== currentGroupKey) {
@@ -759,13 +777,18 @@
           topCell = document.createElement('div');
           topCell.className = 'month-cell';
           topCell.textContent = topMeta.label;
+          topCell.style.position = 'absolute';
+          topCell.style.left = `${col.x}px`;
           topCell.style.width = '0px';
+          topCellLeft = col.x;
           topBand.appendChild(topCell);
         }
-        if (topCell) topCell.style.width = `${parseFloat(topCell.style.width) + col.width}px`;
+        if (topCell) topCell.style.width = `${col.x + col.width - topCellLeft}px`;
 
         const cell = document.createElement('div');
         cell.className = `day-cell${this.isWeekendColumn(col) ? ' weekend' : ''}`;
+        cell.style.position = 'absolute';
+        cell.style.left = `${col.x}px`;
         cell.style.width = `${col.width}px`;
         cell.style.minWidth = `${col.width}px`;
         cell.style.maxWidth = `${col.width}px`;
@@ -1104,12 +1127,19 @@
       defs.appendChild(marker);
       svg.appendChild(defs);
 
+      const resolvedDependencies = [];
       deps.forEach((dep) => {
         const sourceBar = this.barByDependencyKey.get(this.getDependencyLookupKey(dep.mappingLineNo, dep.sourceKey))
           || this.barByDependencyKey.get(dep.sourceKey);
         const targetBar = this.barByDependencyKey.get(this.getDependencyLookupKey(dep.mappingLineNo, dep.targetKey))
           || this.barByDependencyKey.get(dep.targetKey);
         if (!sourceBar || !targetBar) return;
+        resolvedDependencies.push({ dep, sourceBar, targetBar });
+      });
+
+      this.logDependencyDebugGroups(resolvedDependencies);
+
+      resolvedDependencies.forEach(({ sourceBar, targetBar }) => {
         if (!visibleRowIds.has(sourceBar.rowId) && !visibleRowIds.has(targetBar.rowId)) return;
 
         const sourceRowIndex = this.rowIndexById.get(sourceBar.rowId);
@@ -1134,6 +1164,55 @@
         arrow.setAttribute('marker-end', 'url(#dgog-arrow)');
         svg.appendChild(arrow);
       });
+    }
+
+    logDependencyDebugGroups(resolvedDependencies) {
+      const signature = resolvedDependencies
+        .map(({ dep, sourceBar, targetBar }) => `${dep.mappingLineNo || 0}:${sourceBar.barId || sourceBar.dependencyKey}->${targetBar.barId || targetBar.dependencyKey}`)
+        .join('|');
+      if (signature === this.lastDependencyDebugSignature) return;
+      this.lastDependencyDebugSignature = signature;
+
+      const rowsById = new Map((this.payload?.rows || []).map((row) => [row.rowId, row]));
+      const groups = new Map();
+
+      resolvedDependencies.forEach(({ dep, sourceBar, targetBar }) => {
+        const sourceRow = rowsById.get(sourceBar.rowId) || {};
+        const targetRow = rowsById.get(targetBar.rowId) || {};
+        const parentRowId = sourceRow.parentRowId || targetRow.parentRowId || sourceBar.rowId || targetBar.rowId || 'root';
+        const parentRow = rowsById.get(parentRowId) || {};
+        const groupKey = `${dep.mappingLineNo || 0}|${parentRowId}`;
+
+        if (!groups.has(groupKey)) {
+          groups.set(groupKey, {
+            mappingLineNo: dep.mappingLineNo || 0,
+            parentRowId,
+            parentLabel: parentRow.keyText || parentRow.descriptionText || parentRowId,
+            items: []
+          });
+        }
+
+        groups.get(groupKey).items.push({
+          from: sourceBar.label || sourceRow.keyText || sourceBar.barId || sourceBar.dependencyKey || '(source)',
+          to: targetBar.label || targetRow.keyText || targetBar.barId || targetBar.dependencyKey || '(target)',
+          sourceRowId: sourceBar.rowId,
+          targetRowId: targetBar.rowId,
+          sourceDependencyKey: sourceBar.dependencyKey || '',
+          targetDependencyKey: targetBar.dependencyKey || ''
+        });
+      });
+
+      console.groupCollapsed(`[GANTT][dependency-debug] ${resolvedDependencies.length} arrow candidate(s)`);
+      groups.forEach((group) => {
+        console.groupCollapsed(
+          `[GANTT][dependency-parent] mappingLine=${group.mappingLineNo} parent=${group.parentLabel} (${group.items.length})`
+        );
+        group.items.forEach((item) => {
+          console.log(`${item.from} -> ${item.to}`, item);
+        });
+        console.groupEnd();
+      });
+      console.groupEnd();
     }
 
     hasConflict(bar) {
