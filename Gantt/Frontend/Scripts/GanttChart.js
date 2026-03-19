@@ -212,7 +212,37 @@
         this.restoreViewportCenter(this.getGrainFocusDate(centerDate, this.effectiveTimeGrain));
         this.log('View', 'info', 'Time grain changed', { timeGrain: this.timeGrain, effectiveGrain: this.effectiveTimeGrain });
       });
-...
+
+      this.ui.viewGroup.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-view-code]');
+        if (!button) return;
+        const contextKey = this.getSelectedContextKey();
+        invoke('ViewChangeRequested', [button.getAttribute('data-view-code') || '', contextKey]);
+      });
+
+      this.ui.scrollBody.addEventListener('scroll', () => {
+        this.lastScrollLeft = this.ui.scrollBody.scrollLeft;
+        this.syncTimelineHeaderPosition();
+        this.syncLabelViewport();
+        this.scheduleViewportRender();
+        this.syncMiniMapViewport();
+      });
+
+      this.ui.scrollBody.addEventListener(
+        'wheel',
+        (event) => {
+          if (!event.ctrlKey) return;
+          event.preventDefault();
+          this.setZoom(this.zoom + (event.deltaY < 0 ? 10 : -10));
+        },
+        { passive: false }
+      );
+
+      this.root.addEventListener('mousemove', (event) => this.onPointerMove(event));
+      this.root.addEventListener('mouseup', () => this.finishDrag());
+      this.root.addEventListener('mouseleave', () => this.finishDrag());
+    }
+
     load(payload) {
       const previousExpandedRows = new Set(this.expandedRows);
       const preserveExpandedState = !!this.payload;
@@ -248,10 +278,46 @@
         if (row && row.isExpanded && validRowIds.has(row.rowId)) this.expandedRows.add(row.rowId);
       });
     }
-...
+
+    normalizeTimeGrain(value) {
+      switch (String(value || '').trim().toLowerCase()) {
+        case 'day':
+          return 'Day';
+        case 'week':
+          return 'Week';
+        case 'month':
+          return 'Month';
+        case 'year':
+          return 'Year';
+        case 'hour':
+          return 'Hour';
+        default:
+          return 'Day';
+      }
+    }
+
+    setZoom(value) {
+      const centerDate = this.getViewportCenterDate();
+      this.zoom = clamp(Math.round(value / 10) * 10, 30, 400);
+      this.ui.zoomLabel.textContent = `${this.zoom}%`;
+      this.render();
+      this.restoreViewportCenter(centerDate);
+      window.requestAnimationFrame(() => this.syncTimelineHeaderPosition());
+      this.log('View', 'info', 'Zoom changed', { zoom: this.zoom, grain: this.timeGrain, effectiveGrain: this.effectiveTimeGrain });
+    }
+
+    getViewportCenterDate() {
+      const body = this.ui.scrollBody;
+      if (!body || !this.timelineStart || !this.timelineEnd || this.totalTimelineWidth <= 0) return null;
+      return this.xToDate(body.scrollLeft + body.clientWidth / 2);
+    }
+
     restoreViewportCenter(centerDate) {
       const body = this.ui.scrollBody;
-      if (!body || !centerDate || !this.timelineStart || !this.timelineEnd) return;
+      if (!body || !centerDate || !this.timelineStart || !this.timelineEnd) {
+        this.syncTimelineHeaderPosition();
+        return;
+      }
       const desiredScrollLeft = this.dateToX(centerDate) - body.clientWidth / 2;
       body.scrollLeft = clamp(desiredScrollLeft, 0, Math.max(0, this.totalTimelineWidth - body.clientWidth));
       this.lastScrollLeft = body.scrollLeft;
@@ -269,7 +335,83 @@
       const bucketEnd = this.advanceDateByGrain(bucketStart, normalizedGrain, 1);
       return new Date(bucketStart.getTime() + (bucketEnd.getTime() - bucketStart.getTime()) / 2);
     }
-...
+
+    syncTimelineHeaderPosition() {
+      if (!this.ui.timelineTrack || !this.ui.scrollBody) return;
+      const scrollLeft = this.ui.scrollBody.scrollLeft;
+      this.lastScrollLeft = scrollLeft;
+      this.ui.timelineTrack.style.transform = `translate3d(${-scrollLeft}px, 0, 0)`;
+    }
+
+    setBusy(caption, isBusy) {
+      this.root.classList.toggle('is-busy', !!isBusy);
+      this.root.setAttribute('data-busy-caption', caption || '');
+    }
+
+    showNotification(message, level) {
+      this.log('Interaction', level || 'info', message, {});
+      if (!message) return;
+      this.ui.errorState.hidden = true;
+      this.ui.emptyState.hidden = true;
+      this.ui.dirtyIndicator.textContent = message;
+      this.ui.dirtyIndicator.hidden = false;
+      setTimeout(() => {
+        if (!this.dirty) this.ui.dirtyIndicator.hidden = true;
+      }, 2500);
+    }
+
+    requestClientSave() {
+      if (!this.dirty || !(this.payload?.setup || {}).allowSave) return;
+      invoke('SaveRequested', [JSON.stringify(this.pendingChanges)]);
+      this.log('Edit', 'info', 'Save requested', { count: this.pendingChanges.length });
+    }
+
+    requestClientReload() {
+      invoke('ReloadRequested', []);
+      this.log('Edit', 'info', 'Reload requested', {});
+    }
+
+    scheduleViewportRender() {
+      if (this.renderFrame) return;
+      this.renderFrame = window.requestAnimationFrame(() => {
+        this.renderFrame = 0;
+        this.renderViewport();
+      });
+    }
+
+    render() {
+      if (!this.payload) return;
+      const rows = this.payload.rows || [];
+      const bars = this.payload.bars || [];
+      this.ui.emptyState.hidden = rows.length > 0;
+      this.ui.errorState.hidden = true;
+
+      this.syncTimegrainButtons();
+      this.syncViewButtons();
+
+      if (!rows.length) {
+        this.ui.labelPane.innerHTML = '';
+        this.ui.timelineHead.innerHTML = '';
+        this.ui.gridCanvas.innerHTML = '<svg class="lve-dependency-layer"></svg>';
+        this.ui.dependencyLayer = this.ui.gridCanvas.querySelector('.lve-dependency-layer');
+        this.ui.timelineTrack = null;
+        this.renderDirtyState();
+        return;
+      }
+
+      this.indexBars(bars);
+      this.computeVisibleRows(rows);
+      this.buildDerivedCaches();
+      this.computeTimeline();
+      this.renderTimelineHeader();
+      this.renderRowsAndGrid();
+      this.syncTimelineHeaderPosition();
+      this.syncLabelViewport();
+      this.renderViewport();
+      this.renderMiniMap();
+      this.renderDirtyState();
+    }
+
     syncTimegrainButtons() {
       const grains = ['Hour', 'Day', 'Week', 'Month', 'Year'];
       const labels = {
