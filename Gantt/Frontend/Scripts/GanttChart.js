@@ -81,6 +81,7 @@
       this.selectedBarId = '';
       this.dragState = null;
       this.expandedRows = new Set();
+      this.expandedStatusGroups = new Set();
       this.visibleRows = [];
       this.childRowsByParent = new Map();
       this.barMapByRow = new Map();
