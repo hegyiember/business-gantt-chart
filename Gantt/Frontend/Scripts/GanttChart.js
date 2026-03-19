@@ -1332,7 +1332,7 @@
           groupHeader.style.padding = `0 10px 0 ${10 + ((entry.groupLevel || 0) * 14)}px`;
           groupHeader.style.border = '0';
           groupHeader.style.background = groupMeta.color;
-          groupHeader.style.color = '#ffffff';
+          groupHeader.style.color = groupMeta.textColor;
           groupHeader.style.cursor = 'pointer';
           groupHeader.style.fontSize = '11px';
           groupHeader.style.fontWeight = '700';
