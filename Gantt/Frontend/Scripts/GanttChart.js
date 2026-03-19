@@ -1283,6 +1283,47 @@
       });
     }
 
+    getRowDebugLabel(row) {
+      const parts = [row?.keyText, row?.descriptionText].filter(Boolean);
+      return parts.join(' — ') || row?.tooltipTitle || row?.rowId || '(row)';
+    }
+
+    getRowDebugInfo(row) {
+      const tooltipFields = Array.isArray(row?.tooltipFields)
+        ? row.tooltipFields.map((field) => ({
+            caption: field?.caption || '',
+            value: field?.value || ''
+          }))
+        : [];
+
+      return {
+        rowId: row?.rowId || '',
+        parentRowId: row?.parentRowId || '',
+        level: row?.level || 0,
+        keyText: row?.keyText || '',
+        descriptionText: row?.descriptionText || '',
+        tooltipTitle: row?.tooltipTitle || '',
+        yLabel: this.getRowDebugLabel(row),
+        yLabelFields: tooltipFields
+      };
+    }
+
+    getBarDebugInfo(bar, row) {
+      return {
+        barId: bar?.barId || '',
+        label: bar?.label || '',
+        rowId: bar?.rowId || row?.rowId || '',
+        dependencyKey: bar?.dependencyKey || '',
+        mappingLineNo: bar?.mappingLineNo || 0,
+        sourceTableId: bar?.sourceTableId || 0,
+        sourceRecordId: bar?.sourceRecordId || '',
+        start: bar?.start || '',
+        end: bar?.end || '',
+        due: bar?.due || '',
+        yAxisContext: this.getRowDebugInfo(row)
+      };
+    }
+
     logDependencyDebugGroups(resolvedDependencies) {
       const signature = resolvedDependencies
         .map(({ dep, sourceBar, targetBar }) => `${dep.mappingLineNo || 0}:${sourceBar.barId || sourceBar.dependencyKey}->${targetBar.barId || targetBar.dependencyKey}`)
@@ -1303,29 +1344,36 @@
         if (!groups.has(groupKey)) {
           groups.set(groupKey, {
             mappingLineNo: dep.mappingLineNo || 0,
-            parentRowId,
-            parentLabel: parentRow.keyText || parentRow.descriptionText || parentRowId,
+            parent: this.getRowDebugInfo(parentRow),
             items: []
           });
         }
 
         groups.get(groupKey).items.push({
-          from: sourceBar.label || sourceRow.keyText || sourceBar.barId || sourceBar.dependencyKey || '(source)',
-          to: targetBar.label || targetRow.keyText || targetBar.barId || targetBar.dependencyKey || '(target)',
-          sourceRowId: sourceBar.rowId,
-          targetRowId: targetBar.rowId,
-          sourceDependencyKey: sourceBar.dependencyKey || '',
-          targetDependencyKey: targetBar.dependencyKey || ''
+          relation: {
+            mappingLineNo: dep.mappingLineNo || 0,
+            sourceKey: dep.sourceKey || '',
+            targetKey: dep.targetKey || ''
+          },
+          source: this.getBarDebugInfo(sourceBar, sourceRow),
+          target: this.getBarDebugInfo(targetBar, targetRow)
         });
       });
 
       console.groupCollapsed(`[GANTT][dependency-debug] ${resolvedDependencies.length} arrow candidate(s)`);
       groups.forEach((group) => {
         console.groupCollapsed(
-          `[GANTT][dependency-parent] mappingLine=${group.mappingLineNo} parent=${group.parentLabel} (${group.items.length})`
+          `[GANTT][dependency-parent] mappingLine=${group.mappingLineNo} parent=${group.parent.yLabel} (${group.items.length})`
         );
-        group.items.forEach((item) => {
-          console.log(`${item.from} -> ${item.to}`, item);
+        console.log('parent', group.parent);
+        group.items.forEach((item, index) => {
+          console.groupCollapsed(
+            `[GANTT][dependency-arrow ${index + 1}] ${item.source.yAxisContext.yLabel} -> ${item.target.yAxisContext.yLabel}`
+          );
+          console.log('relation', item.relation);
+          console.log('source', item.source);
+          console.log('target', item.target);
+          console.groupEnd();
         });
         console.groupEnd();
       });
