@@ -1101,14 +1101,13 @@
     }
 
     isStatusGroupStart(index) {
-      const row = this.visibleRows[index];
-      if (!row) return false;
-      const previousRow = index > 0 ? this.visibleRows[index - 1] : null;
-      return index === 0 || this.getNormalizedStatusValue(previousRow) !== this.getNormalizedStatusValue(row);
+      const entry = this.visibleRenderRows[index];
+      if (!entry || entry.kind !== 'status-header') return false;
+      return true;
     }
 
-    getRowContentOffset(index) {
-      return this.isStatusGroupStart(index) ? this.statusGroupHeaderHeight : 0;
+    getRenderRowTop(index) {
+      return index * this.rowHeight;
     }
 
     getStatusMeta(row) {
@@ -1180,13 +1179,12 @@
       const rowLineFragment = document.createDocumentFragment();
 
       for (let index = startIndex; index < endIndex; index += 1) {
-        const row = this.visibleRows[index];
-        if (!row) continue;
+        const entry = this.visibleRenderRows[index];
+        if (!entry) continue;
 
-        const rowTop = index * this.rowHeight;
+        const row = entry.sourceRow;
+        const rowTop = this.getRenderRowTop(index);
         const statusMeta = this.getStatusMeta(row);
-        const isNewStatusGroup = this.isStatusGroupStart(index);
-        const contentHeight = this.rowHeight - (isNewStatusGroup ? this.statusGroupHeaderHeight : 0);
 
         const labelRow = document.createElement('div');
         labelRow.className = 'lve-label-row';
@@ -1198,15 +1196,11 @@
         labelRow.style.paddingRight = '8px';
         labelRow.style.background = '#ffffff';
         labelRow.dataset.rowId = row.rowId;
+        labelRow.dataset.rowKind = entry.kind;
 
-        if (isNewStatusGroup) {
-          labelRow.style.display = 'flex';
-          labelRow.style.flexDirection = 'column';
-
-          const headerRow = document.createElement('div');
-          headerRow.style.height = `${this.statusGroupHeaderHeight}px`;
-          headerRow.style.display = 'grid';
-          headerRow.style.gridTemplateColumns = `${this.statusLabelWidth}px minmax(0, 1fr)`;
+        if (entry.kind === 'status-header') {
+          labelRow.style.display = 'grid';
+          labelRow.style.gridTemplateColumns = `${this.statusLabelWidth}px minmax(0, 1fr)`;
 
           const statusHeader = document.createElement('div');
           statusHeader.style.display = 'flex';
@@ -1221,50 +1215,46 @@
           statusHeader.style.background = statusMeta.color;
           statusHeader.textContent = statusMeta.label;
 
-          const headerSpacer = document.createElement('div');
-          headerSpacer.style.background = '#ffffff';
+          const spacer = document.createElement('div');
+          spacer.style.background = '#ffffff';
 
-          headerRow.appendChild(statusHeader);
-          headerRow.appendChild(headerSpacer);
-          labelRow.appendChild(headerRow);
+          labelRow.appendChild(statusHeader);
+          labelRow.appendChild(spacer);
 
-          const contentRow = document.createElement('div');
-          contentRow.style.height = `${contentHeight}px`;
-          contentRow.style.display = 'grid';
-          contentRow.style.gridTemplateColumns = `${this.statusRailWidth}px minmax(0, 1fr)`;
-
-          const rail = document.createElement('div');
-          rail.style.background = statusMeta.railColor;
-
-          contentRow.appendChild(rail);
-          contentRow.appendChild(this.createRowContentWrap(row, contentHeight));
-          labelRow.appendChild(contentRow);
-
-          const groupGap = document.createElement('div');
-          groupGap.style.position = 'absolute';
-          groupGap.style.left = '0';
-          groupGap.style.top = `${rowTop}px`;
-          groupGap.style.width = `${this.totalTimelineWidth}px`;
-          groupGap.style.height = `${this.statusGroupHeaderHeight}px`;
-          groupGap.style.background = '#ffffff';
-          rowLineFragment.appendChild(groupGap);
+          const blankGridRow = document.createElement('div');
+          blankGridRow.style.position = 'absolute';
+          blankGridRow.style.left = '0';
+          blankGridRow.style.top = `${rowTop}px`;
+          blankGridRow.style.width = `${this.totalTimelineWidth}px`;
+          blankGridRow.style.height = `${this.rowHeight}px`;
+          blankGridRow.style.background = '#ffffff';
+          rowLineFragment.appendChild(blankGridRow);
         } else {
           labelRow.style.display = 'grid';
           labelRow.style.gridTemplateColumns = `${this.statusRailWidth}px minmax(0, 1fr)`;
 
           const rail = document.createElement('div');
-          rail.style.background = statusMeta.railColor;
+          rail.style.display = 'flex';
+          rail.style.justifyContent = 'center';
+          rail.style.background = '#ffffff';
+
+          const railLine = document.createElement('div');
+          railLine.style.width = '18px';
+          railLine.style.height = '100%';
+          railLine.style.background = statusMeta.railColor;
+          rail.appendChild(railLine);
+
           labelRow.appendChild(rail);
           labelRow.appendChild(this.createRowContentWrap(row, this.rowHeight));
+
+          const hLine = document.createElement('div');
+          hLine.className = 'hline';
+          hLine.style.top = `${rowTop + this.rowHeight - 1}px`;
+          rowLineFragment.appendChild(hLine);
         }
 
         this.addTooltipHandlers(labelRow, row.tooltipTitle, row.tooltipFields);
         labelFragment.appendChild(labelRow);
-
-        const hLine = document.createElement('div');
-        hLine.className = 'hline';
-        hLine.style.top = `${rowTop + this.rowHeight - 1}px`;
-        rowLineFragment.appendChild(hLine);
       }
 
       this.ui.labelSurface.appendChild(labelFragment);
