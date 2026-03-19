@@ -248,6 +248,7 @@
     load(payload) {
       const previousExpandedRows = new Set(this.expandedRows);
       const preserveExpandedState = !!this.payload;
+      const previousViewState = preserveExpandedState ? this.captureViewState() : null;
 
       this.payload = payload || {};
       this.pendingChanges = [];
@@ -257,11 +258,16 @@
       this.dragState = null;
 
       const setup = this.payload.setup || {};
-      this.timeGrain = this.normalizeTimeGrain(setup.defaultTimeGrain || this.timeGrain);
-      this.zoom = clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
+      this.timeGrain = preserveExpandedState
+        ? this.normalizeTimeGrain(previousViewState?.timeGrain || this.timeGrain)
+        : this.normalizeTimeGrain(setup.defaultTimeGrain || this.timeGrain);
+      this.zoom = preserveExpandedState
+        ? clamp(Math.round(Number(previousViewState?.zoom || this.zoom) / 10) * 10, 30, 400)
+        : clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
       this.seedExpandedRows(previousExpandedRows, preserveExpandedState);
       this.render();
+      if (preserveExpandedState) this.restoreViewState(previousViewState);
     }
 
     seedExpandedRows(previousExpandedRows, preserveExpandedState) {
