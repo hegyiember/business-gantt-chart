@@ -636,10 +636,12 @@
 
     getColumnWidth(grain) {
       const zoomFactor = this.zoom / 100;
+      const dayWidth = 32 * zoomFactor;
       switch (grain) {
         case 'Hour':
+          return dayWidth * 3;
         case 'Day':
-          return 32 * zoomFactor;
+          return this.effectiveTimeGrain === 'Hour' ? dayWidth * 3 : dayWidth;
         case 'Week':
           return 96 * zoomFactor;
         case 'Month':
@@ -647,7 +649,7 @@
         case 'Year':
           return 180 * zoomFactor;
         default:
-          return 32 * zoomFactor;
+          return dayWidth;
       }
     }
 
