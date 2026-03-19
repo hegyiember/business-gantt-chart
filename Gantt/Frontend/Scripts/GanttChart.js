@@ -540,14 +540,24 @@
       });
 
       this.visibleRows = [];
+      this.visibleRenderRows = [];
       const walk = (row) => {
         this.visibleRows.push(row);
+        this.visibleRenderRows.push({ kind: 'status-header', rowId: row.rowId, statusKey: this.getNormalizedStatusValue(row), sourceRow: row });
+        this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, statusKey: this.getNormalizedStatusValue(row), sourceRow: row });
+
         const children = this.childRowsByParent.get(row.rowId) || [];
         if (!children.length || !row.hasChildren || !this.expandedRows.has(row.rowId)) return;
         children.forEach(walk);
       };
 
       roots.forEach(walk);
+
+      this.visibleRenderRows = this.visibleRenderRows.filter((entry, index, items) => {
+        if (entry.kind !== 'status-header') return true;
+        const previous = items[index - 1];
+        return !previous || previous.kind !== 'data' || previous.statusKey !== entry.statusKey;
+      });
     }
 
     buildDerivedCaches() {
@@ -556,8 +566,9 @@
       this.conflictingBarIds.clear();
       this.rowsWithConflict.clear();
 
-      this.visibleRows.forEach((row, index) => {
-        this.rowIndexById.set(row.rowId, index);
+      this.visibleRows.forEach((row) => {
+        const renderIndex = this.visibleRenderRows.findIndex((entry) => entry.kind === 'data' && entry.rowId === row.rowId);
+        this.rowIndexById.set(row.rowId, renderIndex);
       });
 
       const payloadMappings = this.payload?.mappingLines || [];
@@ -914,7 +925,7 @@
 
     renderRowsAndGrid() {
       this.viewportWidth = this.totalTimelineWidth;
-      this.totalContentHeight = this.visibleRows.length * this.rowHeight;
+      this.totalContentHeight = this.visibleRenderRows.length * this.rowHeight;
       const headHeight = this.ui.timelineHead.offsetHeight || 52;
 
       this.ui.labelPane.innerHTML = '';
@@ -1048,7 +1059,7 @@
       const viewportHeight = this.ui.scrollBody?.clientHeight || 0;
       const start = Math.max(0, Math.floor(scrollTop / this.rowHeight) - this.rowOverscan);
       const end = Math.min(
-        this.visibleRows.length,
+        this.visibleRenderRows.length,
         Math.ceil((scrollTop + viewportHeight) / this.rowHeight) + this.rowOverscan
       );
       return { start, end };
@@ -1090,14 +1101,13 @@
     }
 
     isStatusGroupStart(index) {
-      const row = this.visibleRows[index];
-      if (!row) return false;
-      const previousRow = index > 0 ? this.visibleRows[index - 1] : null;
-      return index === 0 || this.getNormalizedStatusValue(previousRow) !== this.getNormalizedStatusValue(row);
+      const entry = this.visibleRenderRows[index];
+      if (!entry || entry.kind !== 'status-header') return false;
+      return true;
     }
 
-    getRowContentOffset(index) {
-      return this.isStatusGroupStart(index) ? this.statusGroupHeaderHeight : 0;
+    getRenderRowTop(index) {
+      return index * this.rowHeight;
     }
 
     getStatusMeta(row) {
@@ -1169,13 +1179,12 @@
       const rowLineFragment = document.createDocumentFragment();
 
       for (let index = startIndex; index < endIndex; index += 1) {
-        const row = this.visibleRows[index];
-        if (!row) continue;
+        const entry = this.visibleRenderRows[index];
+        if (!entry) continue;
 
-        const rowTop = index * this.rowHeight;
+        const row = entry.sourceRow;
+        const rowTop = this.getRenderRowTop(index);
         const statusMeta = this.getStatusMeta(row);
-        const isNewStatusGroup = this.isStatusGroupStart(index);
-        const contentHeight = this.rowHeight - (isNewStatusGroup ? this.statusGroupHeaderHeight : 0);
 
         const labelRow = document.createElement('div');
         labelRow.className = 'lve-label-row';
@@ -1187,15 +1196,11 @@
         labelRow.style.paddingRight = '8px';
         labelRow.style.background = '#ffffff';
         labelRow.dataset.rowId = row.rowId;
+        labelRow.dataset.rowKind = entry.kind;
 
-        if (isNewStatusGroup) {
-          labelRow.style.display = 'flex';
-          labelRow.style.flexDirection = 'column';
-
-          const headerRow = document.createElement('div');
-          headerRow.style.height = `${this.statusGroupHeaderHeight}px`;
-          headerRow.style.display = 'grid';
-          headerRow.style.gridTemplateColumns = `${this.statusLabelWidth}px minmax(0, 1fr)`;
+        if (entry.kind === 'status-header') {
+          labelRow.style.display = 'grid';
+          labelRow.style.gridTemplateColumns = `${this.statusLabelWidth}px minmax(0, 1fr)`;
 
           const statusHeader = document.createElement('div');
           statusHeader.style.display = 'flex';
@@ -1210,50 +1215,46 @@
           statusHeader.style.background = statusMeta.color;
           statusHeader.textContent = statusMeta.label;
 
-          const headerSpacer = document.createElement('div');
-          headerSpacer.style.background = '#ffffff';
+          const spacer = document.createElement('div');
+          spacer.style.background = '#ffffff';
 
-          headerRow.appendChild(statusHeader);
-          headerRow.appendChild(headerSpacer);
-          labelRow.appendChild(headerRow);
+          labelRow.appendChild(statusHeader);
+          labelRow.appendChild(spacer);
 
-          const contentRow = document.createElement('div');
-          contentRow.style.height = `${contentHeight}px`;
-          contentRow.style.display = 'grid';
-          contentRow.style.gridTemplateColumns = `${this.statusRailWidth}px minmax(0, 1fr)`;
-
-          const rail = document.createElement('div');
-          rail.style.background = statusMeta.railColor;
-
-          contentRow.appendChild(rail);
-          contentRow.appendChild(this.createRowContentWrap(row, contentHeight));
-          labelRow.appendChild(contentRow);
-
-          const groupGap = document.createElement('div');
-          groupGap.style.position = 'absolute';
-          groupGap.style.left = '0';
-          groupGap.style.top = `${rowTop}px`;
-          groupGap.style.width = `${this.totalTimelineWidth}px`;
-          groupGap.style.height = `${this.statusGroupHeaderHeight}px`;
-          groupGap.style.background = '#ffffff';
-          rowLineFragment.appendChild(groupGap);
+          const blankGridRow = document.createElement('div');
+          blankGridRow.style.position = 'absolute';
+          blankGridRow.style.left = '0';
+          blankGridRow.style.top = `${rowTop}px`;
+          blankGridRow.style.width = `${this.totalTimelineWidth}px`;
+          blankGridRow.style.height = `${this.rowHeight}px`;
+          blankGridRow.style.background = '#ffffff';
+          rowLineFragment.appendChild(blankGridRow);
         } else {
           labelRow.style.display = 'grid';
           labelRow.style.gridTemplateColumns = `${this.statusRailWidth}px minmax(0, 1fr)`;
 
           const rail = document.createElement('div');
-          rail.style.background = statusMeta.railColor;
+          rail.style.display = 'flex';
+          rail.style.justifyContent = 'center';
+          rail.style.background = '#ffffff';
+
+          const railLine = document.createElement('div');
+          railLine.style.width = '18px';
+          railLine.style.height = '100%';
+          railLine.style.background = statusMeta.railColor;
+          rail.appendChild(railLine);
+
           labelRow.appendChild(rail);
           labelRow.appendChild(this.createRowContentWrap(row, this.rowHeight));
+
+          const hLine = document.createElement('div');
+          hLine.className = 'hline';
+          hLine.style.top = `${rowTop + this.rowHeight - 1}px`;
+          rowLineFragment.appendChild(hLine);
         }
 
         this.addTooltipHandlers(labelRow, row.tooltipTitle, row.tooltipFields);
         labelFragment.appendChild(labelRow);
-
-        const hLine = document.createElement('div');
-        hLine.className = 'hline';
-        hLine.style.top = `${rowTop + this.rowHeight - 1}px`;
-        rowLineFragment.appendChild(hLine);
       }
 
       this.ui.labelSurface.appendChild(labelFragment);
@@ -1263,10 +1264,11 @@
     renderBars(startIndex, endIndex) {
       const fragment = document.createDocumentFragment();
 
-      for (let rowIndex = startIndex; rowIndex < endIndex; rowIndex += 1) {
-        const row = this.visibleRows[rowIndex];
-        if (!row) continue;
+      for (let renderIndex = startIndex; renderIndex < endIndex; renderIndex += 1) {
+        const entry = this.visibleRenderRows[renderIndex];
+        if (!entry || entry.kind !== 'data') continue;
 
+        const row = entry.sourceRow;
         const rowBars = this.barMapByRow.get(row.rowId) || [];
         rowBars.forEach((bar) => {
           const start = toDate(bar.start);
@@ -1276,7 +1278,7 @@
           const xStart = this.dateToX(start);
           const xEnd = this.dateToX(end);
           const width = Math.max(6, xEnd - xStart);
-          const metrics = this.getBarVerticalMetrics(bar, rowIndex);
+          const metrics = this.getBarVerticalMetrics(bar, renderIndex);
           const isChild = metrics.isChild;
           const top = metrics.top;
           const height = metrics.height;
@@ -1337,10 +1339,11 @@
       return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
-    getBarVerticalMetrics(bar, rowIndex) {
-      const row = this.visibleRows[rowIndex] || {};
+    getBarVerticalMetrics(bar, renderIndex) {
+      const entry = this.visibleRenderRows[renderIndex] || {};
+      const row = entry.sourceRow || {};
       const isChild = (bar?.depth || 0) > 0 || ((row.level || 0) > 0);
-      const top = rowIndex * this.rowHeight + this.getRowContentOffset(rowIndex) + (isChild ? 8 : 6);
+      const top = this.getRenderRowTop(renderIndex) + (isChild ? 10 : 8);
       const height = isChild ? 16 : 20;
 
       return {
@@ -1407,8 +1410,8 @@
 
       const visibleRowIds = new Set();
       for (let index = startIndex; index < endIndex; index += 1) {
-        const row = this.visibleRows[index];
-        if (row) visibleRowIds.add(row.rowId);
+        const entry = this.visibleRenderRows[index];
+        if (entry && entry.kind === 'data') visibleRowIds.add(entry.rowId);
       }
 
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
@@ -1610,14 +1613,14 @@
         ghost: null
       };
 
-      const rowIndex = this.rowIndexById.get(row.rowId) || 0;
-      const isChild = (bar.depth || 0) > 0 || (row.level || 0) > 0;
+      const renderIndex = this.rowIndexById.get(row.rowId) || 0;
+      const metrics = this.getBarVerticalMetrics(bar, renderIndex);
       const ghost = document.createElement('div');
       ghost.className = 'lve-bar-ghost';
       ghost.style.left = `${xStart}px`;
-      ghost.style.top = `${rowIndex * this.rowHeight + (isChild ? 10 : 8)}px`;
+      ghost.style.top = `${metrics.top}px`;
       ghost.style.width = `${Math.max(6, xEnd - xStart)}px`;
-      ghost.style.height = `${isChild ? 16 : 20}px`;
+      ghost.style.height = `${metrics.height}px`;
       this.ui.gridBarLayer.appendChild(ghost);
       this.dragState.ghost = ghost;
       this.log('Interaction', 'info', 'Drag start', { barId: bar.barId, mode });
