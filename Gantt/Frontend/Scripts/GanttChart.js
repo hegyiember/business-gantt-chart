@@ -209,41 +209,14 @@
         this.timeGrain = this.normalizeTimeGrain(button.getAttribute('data-grain'));
         this.syncTimegrainButtons();
         this.render();
-        this.restoreViewportCenter(centerDate);
-        this.log('View', 'info', 'Time grain changed', { timeGrain: this.timeGrain });
+        this.restoreViewportCenter(this.getGrainFocusDate(centerDate, this.effectiveTimeGrain));
+        this.log('View', 'info', 'Time grain changed', { timeGrain: this.timeGrain, effectiveGrain: this.effectiveTimeGrain });
       });
-
-      this.ui.viewGroup.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-view-code]');
-        if (!button) return;
-        const contextKey = this.getSelectedContextKey();
-        invoke('ViewChangeRequested', [button.getAttribute('data-view-code') || '', contextKey]);
-      });
-
-      this.ui.scrollBody.addEventListener('scroll', () => {
-        this.lastScrollLeft = this.ui.scrollBody.scrollLeft;
-        this.syncTimelineHeaderPosition();
-        this.syncLabelViewport();
-        this.scheduleViewportRender();
-        this.syncMiniMapViewport();
-      });
-
-      this.ui.scrollBody.addEventListener(
-        'wheel',
-        (event) => {
-          if (!event.ctrlKey) return;
-          event.preventDefault();
-          this.setZoom(this.zoom + (event.deltaY < 0 ? 10 : -10));
-        },
-        { passive: false }
-      );
-
-      this.root.addEventListener('mousemove', (event) => this.onPointerMove(event));
-      this.root.addEventListener('mouseup', () => this.finishDrag());
-      this.root.addEventListener('mouseleave', () => this.finishDrag());
-    }
-
+...
     load(payload) {
+      const previousExpandedRows = new Set(this.expandedRows);
+      const preserveExpandedState = !!this.payload;
+
       this.payload = payload || {};
       this.pendingChanges = [];
       this.pendingByKey.clear();
@@ -255,49 +228,27 @@
       this.timeGrain = this.normalizeTimeGrain(setup.defaultTimeGrain || this.timeGrain);
       this.zoom = clamp(Math.round(Number(setup.defaultZoom || this.zoom) / 10) * 10, 30, 400);
       this.ui.zoomLabel.textContent = `${this.zoom}%`;
-      this.seedExpandedRows();
+      this.seedExpandedRows(previousExpandedRows, preserveExpandedState);
       this.render();
     }
 
-    seedExpandedRows() {
+    seedExpandedRows(previousExpandedRows, preserveExpandedState) {
+      const rows = this.payload?.rows || [];
+      const validRowIds = new Set(rows.filter((row) => row && row.rowId).map((row) => row.rowId));
       this.expandedRows.clear();
-      (this.payload?.rows || []).forEach((row) => {
-        if (row && row.isExpanded) this.expandedRows.add(row.rowId);
+
+      if (preserveExpandedState) {
+        previousExpandedRows.forEach((rowId) => {
+          if (validRowIds.has(rowId)) this.expandedRows.add(rowId);
+        });
+        return;
+      }
+
+      rows.forEach((row) => {
+        if (row && row.isExpanded && validRowIds.has(row.rowId)) this.expandedRows.add(row.rowId);
       });
     }
-
-    normalizeTimeGrain(value) {
-      switch (String(value || '').trim().toLowerCase()) {
-        case 'day':
-          return 'Day';
-        case 'week':
-          return 'Week';
-        case 'month':
-          return 'Month';
-        case 'year':
-          return 'Year';
-        case 'hour':
-          return 'Hour';
-        default:
-          return 'Day';
-      }
-    }
-
-    setZoom(value) {
-      const centerDate = this.getViewportCenterDate();
-      this.zoom = clamp(Math.round(value / 10) * 10, 30, 400);
-      this.ui.zoomLabel.textContent = `${this.zoom}%`;
-      this.render();
-      this.restoreViewportCenter(centerDate);
-      this.log('View', 'info', 'Zoom changed', { zoom: this.zoom, grain: this.timeGrain, effectiveGrain: this.effectiveTimeGrain });
-    }
-
-    getViewportCenterDate() {
-      const body = this.ui.scrollBody;
-      if (!body || !this.timelineStart || !this.timelineEnd || this.totalTimelineWidth <= 0) return null;
-      return this.xToDate(body.scrollLeft + body.clientWidth / 2);
-    }
-
+...
     restoreViewportCenter(centerDate) {
       const body = this.ui.scrollBody;
       if (!body || !centerDate || !this.timelineStart || !this.timelineEnd) return;
@@ -309,92 +260,32 @@
       this.syncMiniMapViewport();
     }
 
-    syncTimelineHeaderPosition() {
-      if (!this.ui.timelineTrack) return;
-      this.ui.timelineTrack.style.transform = `translateX(${-this.lastScrollLeft}px)`;
+    getGrainFocusDate(centerDate, grain) {
+      if (!centerDate) return null;
+      const normalizedGrain = this.normalizeTimeGrain(grain);
+      if (normalizedGrain === 'Day') return centerDate;
+
+      const bucketStart = this.alignDateToGrain(centerDate, normalizedGrain);
+      const bucketEnd = this.advanceDateByGrain(bucketStart, normalizedGrain, 1);
+      return new Date(bucketStart.getTime() + (bucketEnd.getTime() - bucketStart.getTime()) / 2);
     }
-
-    setBusy(caption, isBusy) {
-      this.root.classList.toggle('is-busy', !!isBusy);
-      this.root.setAttribute('data-busy-caption', caption || '');
-    }
-
-    showNotification(message, level) {
-      this.log('Interaction', level || 'info', message, {});
-      if (!message) return;
-      this.ui.errorState.hidden = true;
-      this.ui.emptyState.hidden = true;
-      this.ui.dirtyIndicator.textContent = message;
-      this.ui.dirtyIndicator.hidden = false;
-      setTimeout(() => {
-        if (!this.dirty) this.ui.dirtyIndicator.hidden = true;
-      }, 2500);
-    }
-
-    requestClientSave() {
-      if (!this.dirty || !(this.payload?.setup || {}).allowSave) return;
-      invoke('SaveRequested', [JSON.stringify(this.pendingChanges)]);
-      this.log('Edit', 'info', 'Save requested', { count: this.pendingChanges.length });
-    }
-
-    requestClientReload() {
-      invoke('ReloadRequested', []);
-      this.log('Edit', 'info', 'Reload requested', {});
-    }
-
-    scheduleViewportRender() {
-      if (this.renderFrame) return;
-      this.renderFrame = window.requestAnimationFrame(() => {
-        this.renderFrame = 0;
-        this.renderViewport();
-      });
-    }
-
-    render() {
-      if (!this.payload) return;
-      const rows = this.payload.rows || [];
-      const bars = this.payload.bars || [];
-      this.ui.emptyState.hidden = rows.length > 0;
-      this.ui.errorState.hidden = true;
-
-      this.syncTimegrainButtons();
-      this.syncViewButtons();
-
-      if (!rows.length) {
-        this.ui.labelPane.innerHTML = '';
-        this.ui.timelineHead.innerHTML = '';
-        this.ui.gridCanvas.innerHTML = '<svg class="lve-dependency-layer"></svg>';
-        this.ui.dependencyLayer = this.ui.gridCanvas.querySelector('.lve-dependency-layer');
-        this.ui.timelineTrack = null;
-        this.renderDirtyState();
-        return;
-      }
-
-      this.indexBars(bars);
-      this.computeVisibleRows(rows);
-      this.buildDerivedCaches();
-      this.computeTimeline();
-      this.renderTimelineHeader();
-      this.renderRowsAndGrid();
-      this.syncTimelineHeaderPosition();
-      this.syncLabelViewport();
-      this.renderViewport();
-      this.renderMiniMap();
-      this.renderDirtyState();
-    }
-
+...
     syncTimegrainButtons() {
-      const supportsHour = this.hasSubDayPrecision(this.payload?.bars || []);
-      const grains = supportsHour || this.timeGrain === 'Hour'
-        ? ['Hour', 'Day', 'Week', 'Month', 'Year']
-        : ['Day', 'Week', 'Month', 'Year'];
+      const grains = ['Hour', 'Day', 'Week', 'Month', 'Year'];
+      const labels = {
+        Hour: 'Hourly',
+        Day: 'Day',
+        Week: 'Week',
+        Month: 'Month',
+        Year: 'Year'
+      };
       this.ui.timegrainGroup.innerHTML = '';
       const fragment = document.createDocumentFragment();
       grains.forEach((grain) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `lve-btn${grain === this.timeGrain ? ' lve-btn-primary' : ''}`;
-        button.textContent = grain;
+        button.textContent = labels[grain] || grain;
         button.setAttribute('data-grain', grain);
         fragment.appendChild(button);
       });
