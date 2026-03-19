@@ -246,7 +246,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         if (StartValue = 0DT) or (EndValue = 0DT) then
             exit;
 
-        StatusText := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Status Field ID");
+        StatusText := ValidationHelper.GetFieldValueAsDisplayText(SourceRef, MappingLine."Status Field ID");
         ColorText := ResolveBarColor(StatusText, ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Color Override Field ID"));
         TrackColorText := ResolveTrackColor(StatusText);
         LabelText := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Label Override Field ID");

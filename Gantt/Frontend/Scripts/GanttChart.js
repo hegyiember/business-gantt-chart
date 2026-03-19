@@ -1337,6 +1337,21 @@
       return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
+    getBarVerticalMetrics(bar, rowIndex) {
+      const row = this.visibleRows[rowIndex] || {};
+      const isChild = (bar?.depth || 0) > 0 || ((row.level || 0) > 0);
+      const top = rowIndex * this.rowHeight + this.getRowContentOffset(rowIndex) + (isChild ? 8 : 6);
+      const height = isChild ? 16 : 20;
+
+      return {
+        isChild,
+        top,
+        height,
+        bottom: top + height,
+        centerY: top + height / 2
+      };
+    }
+
     getBarLayout(bar, rowIndex) {
       const start = toDate(bar?.start);
       const end = toDate(bar?.end);
@@ -1344,17 +1359,15 @@
 
       const left = this.dateToX(start);
       const right = Math.max(left + 6, this.dateToX(end));
-      const isChild = (bar?.depth || 0) > 0 || ((this.visibleRows[rowIndex]?.level || 0) > 0);
-      const top = rowIndex * this.rowHeight + (isChild ? 10 : 8);
-      const height = isChild ? 16 : 20;
+      const metrics = this.getBarVerticalMetrics(bar, rowIndex);
 
       return {
         left,
         right,
         width: right - left,
-        top,
-        bottom: top + height,
-        centerY: top + height / 2
+        top: metrics.top,
+        bottom: metrics.bottom,
+        centerY: metrics.centerY
       };
     }
 
