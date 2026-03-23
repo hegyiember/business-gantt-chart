@@ -546,19 +546,13 @@
 
       this.visibleRows = [];
       this.visibleRenderRows = [];
-      const walk = (row) => {
-        this.visibleRows.push(row);
 
-        const children = this.childRowsByParent.get(row.rowId) || [];
-        if (!children.length || !row.hasChildren || !this.expandedRows.has(row.rowId)) return;
-        children.forEach(walk);
-      };
-
-      roots.forEach(walk);
-
+      // Only root-level rows participate in grouping.
+      // Children are appended directly under their parent without additional group headers.
       let previousGroupingPath = [];
-      this.visibleRows.forEach((row) => {
-        previousGroupingPath = this.appendGroupedRenderRows(row, previousGroupingPath);
+      roots.forEach((rootRow) => {
+        this.visibleRows.push(rootRow);
+        previousGroupingPath = this.appendGroupedRenderRows(rootRow, previousGroupingPath);
       });
     }
 
@@ -599,9 +593,24 @@
 
       if (!hiddenByCollapsedGroup) {
         this.visibleRenderRows.push({ kind: 'data', rowId: row.rowId, sourceRow: row, groupLevel: groupingPath.length });
+        // Recursively append expanded children as plain data rows (no grouping)
+        this.appendChildRenderRows(row, groupingPath.length);
       }
 
       return groupingPath;
+    }
+
+    appendChildRenderRows(parentRow, baseGroupLevel) {
+      const children = this.childRowsByParent.get(parentRow.rowId) || [];
+      if (!children.length || !parentRow.hasChildren || !this.expandedRows.has(parentRow.rowId)) return;
+
+      children.forEach((childRow) => {
+        this.visibleRows.push(childRow);
+        const childLevel = baseGroupLevel + (childRow.level || 0);
+        this.visibleRenderRows.push({ kind: 'data', rowId: childRow.rowId, sourceRow: childRow, groupLevel: childLevel });
+        // Recurse into grandchildren
+        this.appendChildRenderRows(childRow, baseGroupLevel);
+      });
     }
 
     buildDerivedCaches() {
