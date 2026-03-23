@@ -1167,26 +1167,18 @@
 
     getGroupingColorFamilies() {
       return [
-        ['#7f1d1d', '#991b1b', '#b91c1c', '#dc2626', '#ef4444'],
-        ['#0f766e', '#0d9488', '#14b8a6', '#2dd4bf', '#5eead4'],
-        ['#9a3412', '#c2410c', '#ea580c', '#f97316', '#fb923c'],
-        ['#4c1d95', '#5b21b6', '#7c3aed', '#8b5cf6', '#a78bfa'],
-        ['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'],
-        ['#166534', '#15803d', '#16a34a', '#22c55e', '#4ade80'],
-        ['#92400e', '#b45309', '#d97706', '#f59e0b', '#fbbf24'],
-        ['#9f1239', '#be123c', '#e11d48', '#f43f5e', '#fb7185'],
-        ['#155e75', '#0e7490', '#0891b2', '#06b6d4', '#22d3ee'],
-        ['#312e81', '#3730a3', '#4338ca', '#6366f1', '#818cf8'],
-        ['#365314', '#4d7c0f', '#65a30d', '#84cc16', '#a3e635'],
-        ['#701a75', '#86198f', '#a21caf', '#c026d3', '#d946ef'],
-        ['#075985', '#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'],
-        ['#14532d', '#166534', '#15803d', '#16a34a', '#34d399'],
-        ['#78350f', '#92400e', '#a16207', '#ca8a04', '#eab308'],
-        ['#831843', '#9d174d', '#be185d', '#db2777', '#f472b6'],
-        ['#7c2d12', '#9a3412', '#c2410c', '#ea580c', '#fdba74'],
-        ['#3f6212', '#4d7c0f', '#65a30d', '#84cc16', '#bef264'],
-        ['#164e63', '#155e75', '#0e7490', '#0891b2', '#67e8f9'],
-        ['#581c87', '#6b21a8', '#7e22ce', '#9333ea', '#c084fc']
+        ['#450a0a', '#b91c1c', '#f87171', '#fecaca'],
+        ['#052e16', '#15803d', '#4ade80', '#bbf7d0'],
+        ['#1e1b4b', '#4338ca', '#818cf8', '#c7d2fe'],
+        ['#431407', '#c2410c', '#fb923c', '#fed7aa'],
+        ['#134e4a', '#0d9488', '#5eead4', '#ccfbf1'],
+        ['#4a044e', '#a21caf', '#e879f9', '#f5d0fe'],
+        ['#172554', '#1d4ed8', '#60a5fa', '#bfdbfe'],
+        ['#422006', '#a16207', '#facc15', '#fef08a'],
+        ['#4c0519', '#be123c', '#fb7185', '#fecdd3'],
+        ['#083344', '#0e7490', '#22d3ee', '#a5f3fc'],
+        ['#1a2e05', '#4d7c0f', '#a3e635', '#d9f99d'],
+        ['#3b0764', '#7e22ce', '#c084fc', '#e9d5ff']
       ];
     }
 
@@ -1197,7 +1189,7 @@
       const g = parseInt(hex.slice(3, 5), 16);
       const b = parseInt(hex.slice(5, 7), 16);
       const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-      return luminance > 0.62 ? '#0f172a' : '#ffffff';
+      return luminance > 0.45 ? '#0f172a' : '#ffffff';
     }
 
     getGroupPaletteColor(entry) {
@@ -1212,12 +1204,8 @@
       const families = this.getGroupingColorFamilies();
       const family = families[this.hashText(rootKey) % families.length];
 
-      let shadeIndex = 1 + (this.hashText(`${rootKey}|root`) % 2);
-      for (let index = 1; index < effectivePath.length; index += 1) {
-        const segmentKey = this.getGroupPathKey(effectivePath, index);
-        const step = (this.hashText(`${segmentKey}|shade`) % 3) - 1;
-        shadeIndex = clamp(shadeIndex + step, 0, family.length - 1);
-      }
+      // Root → darkest (index 0); each child level steps one shade lighter
+      let shadeIndex = Math.min(groupLevel, family.length - 1);
 
       return family[shadeIndex];
     }
