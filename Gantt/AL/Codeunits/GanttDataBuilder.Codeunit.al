@@ -1,6 +1,18 @@
 codeunit 71891733 "DGOG Gantt Data Builder"
 {
     procedure BuildPayload(SetupId: Integer; RequestedViewCode: Code[20]; ContextKey: Text): Text
+    begin
+        Clear(RuntimeFilterViews);
+        exit(BuildPayloadWithFilters(SetupId, RequestedViewCode, ContextKey));
+    end;
+
+    procedure BuildPayloadFiltered(SetupId: Integer; RequestedViewCode: Code[20]; ContextKey: Text; var FilterViews: Dictionary of [Integer, Text]): Text
+    begin
+        RuntimeFilterViews := FilterViews;
+        exit(BuildPayloadWithFilters(SetupId, RequestedViewCode, ContextKey));
+    end;
+
+    local procedure BuildPayloadWithFilters(SetupId: Integer; RequestedViewCode: Code[20]; ContextKey: Text): Text
     var
         GanttSetup: Record "DGOG Gantt Setup";
         GanttView: Record "DGOG Gantt View";
@@ -49,6 +61,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
 
     var
         ValidationHelper: Codeunit "DGOG Gantt Validation Helper";
+        RuntimeFilterViews: Dictionary of [Integer, Text];
 
     local procedure BuildSetupJson(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; ContextKey: Text; var SetupJson: JsonObject; var ActiveViewJson: JsonObject)
     begin
@@ -158,6 +171,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         EndValue: DateTime;
     begin
         SourceRef.Open(MappingLine."Source Table ID");
+        ApplyRuntimeFilters(SourceRef, MappingLine."Source Table ID");
         if not ApplyParentFieldFilters(SourceRef, MappingLine, ParentSourceRef) then
             exit;
 
