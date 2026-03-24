@@ -55,6 +55,33 @@ page 71891731 "DGOG Gantt Host"
     {
         area(Processing)
         {
+            action(SetFilters)
+            {
+                ApplicationArea = All;
+                Caption = 'Set Filters';
+                Image = FilterLines;
+                ToolTip = 'Opens a filter dialog for the source tables used in the current view, similar to a report request page.';
+
+                trigger OnAction()
+                begin
+                    RunFilterDialog();
+                end;
+            }
+            action(ClearFilters)
+            {
+                ApplicationArea = All;
+                Caption = 'Clear Filters';
+                Image = ClearFilter;
+                ToolTip = 'Clears all runtime filters and reloads the Gantt.';
+
+                trigger OnAction()
+                begin
+                    Clear(ActiveFilterViews);
+                    HasActiveFilters := false;
+                    LoadCurrentView(LastContextKey);
+                    CurrPage.GanttHost.ShowNotification('Filters cleared.', 'info');
+                end;
+            }
             action(ReloadGantt)
             {
                 ApplicationArea = All;
@@ -126,6 +153,8 @@ page 71891731 "DGOG Gantt Host"
         LastLogMessage: Text;
         CurrentZoom: Integer;
         IsControlReady: Boolean;
+        HasActiveFilters: Boolean;
+        ActiveFilterViews: Dictionary of [Integer, Text];
 
     local procedure ResolveInitialViewCode(): Code[20]
     var
@@ -154,10 +183,75 @@ page 71891731 "DGOG Gantt Host"
             exit;
 
         CurrPage.GanttHost.SetBusyState('Loading Gantt data...', true);
-        PayloadJson := DataBuilder.BuildPayload(Rec."ID", ActiveViewCode, ContextKey);
+        if HasActiveFilters then
+            PayloadJson := DataBuilder.BuildPayloadFiltered(Rec."ID", ActiveViewCode, ContextKey, ActiveFilterViews)
+        else
+            PayloadJson := DataBuilder.BuildPayload(Rec."ID", ActiveViewCode, ContextKey);
         CurrPage.GanttHost.LoadData(PayloadJson);
         CurrPage.GanttHost.SetZoom(CurrentZoom);
         CurrPage.GanttHost.SetBusyState('', false);
+    end;
+
+    local procedure RunFilterDialog()
+    var
+        FilterPage: FilterPageBuilder;
+        SourceTableIds: List of [Integer];
+        TableId: Integer;
+        SourceRef: RecordRef;
+        TableCaption: Text;
+        FilterViewText: Text;
+        FilterIndex: Integer;
+        TableRefMap: Dictionary of [Integer, Integer];
+    begin
+        DataBuilder.CollectSourceTableIds(Rec."ID", ActiveViewCode, SourceTableIds);
+        if SourceTableIds.Count() = 0 then begin
+            Message('No source tables found in the current view.');
+            exit;
+        end;
+
+        FilterPage.PageCaption('Gantt Data Filters');
+
+        FilterIndex := 0;
+        foreach TableId in SourceTableIds do begin
+            SourceRef.Open(TableId);
+            TableCaption := SourceRef.Caption;
+            FilterPage.AddRecordRef(TableCaption, SourceRef);
+
+            if HasActiveFilters and ActiveFilterViews.ContainsKey(TableId) then begin
+                FilterViewText := ActiveFilterViews.Get(TableId);
+                if FilterViewText <> '' then
+                    FilterPage.SetView(TableCaption, FilterViewText);
+            end;
+
+            TableRefMap.Add(TableId, FilterIndex);
+            FilterIndex += 1;
+            SourceRef.Close();
+        end;
+
+        if not FilterPage.RunModal() then
+            exit;
+
+        Clear(ActiveFilterViews);
+        HasActiveFilters := false;
+
+        foreach TableId in SourceTableIds do begin
+            SourceRef.Open(TableId);
+            TableCaption := SourceRef.Caption;
+            FilterViewText := FilterPage.GetView(TableCaption, false);
+            SourceRef.Close();
+
+            if FilterViewText <> '' then begin
+                ActiveFilterViews.Add(TableId, FilterViewText);
+                HasActiveFilters := true;
+            end;
+        end;
+
+        LoadCurrentView(LastContextKey);
+
+        if HasActiveFilters then
+            CurrPage.GanttHost.ShowNotification('Filters applied.', 'success')
+        else
+            CurrPage.GanttHost.ShowNotification('No filters set.', 'info');
     end;
 
     local procedure HandleSaveRequested(PendingChangesJson: Text)

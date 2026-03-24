@@ -1,6 +1,18 @@
 codeunit 71891733 "DGOG Gantt Data Builder"
 {
     procedure BuildPayload(SetupId: Integer; RequestedViewCode: Code[20]; ContextKey: Text): Text
+    begin
+        Clear(RuntimeFilterViews);
+        exit(BuildPayloadWithFilters(SetupId, RequestedViewCode, ContextKey));
+    end;
+
+    procedure BuildPayloadFiltered(SetupId: Integer; RequestedViewCode: Code[20]; ContextKey: Text; var FilterViews: Dictionary of [Integer, Text]): Text
+    begin
+        RuntimeFilterViews := FilterViews;
+        exit(BuildPayloadWithFilters(SetupId, RequestedViewCode, ContextKey));
+    end;
+
+    local procedure BuildPayloadWithFilters(SetupId: Integer; RequestedViewCode: Code[20]; ContextKey: Text): Text
     var
         GanttSetup: Record "DGOG Gantt Setup";
         GanttView: Record "DGOG Gantt View";
@@ -49,6 +61,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
 
     var
         ValidationHelper: Codeunit "DGOG Gantt Validation Helper";
+        RuntimeFilterViews: Dictionary of [Integer, Text];
 
     local procedure BuildSetupJson(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; ContextKey: Text; var SetupJson: JsonObject; var ActiveViewJson: JsonObject)
     begin
@@ -158,6 +171,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         EndValue: DateTime;
     begin
         SourceRef.Open(MappingLine."Source Table ID");
+        ApplyRuntimeFilters(SourceRef, MappingLine."Source Table ID");
         if not ApplyParentFieldFilters(SourceRef, MappingLine, ParentSourceRef) then
             exit;
 
@@ -638,5 +652,33 @@ codeunit 71891733 "DGOG Gantt Data Builder"
     local procedure GetStableBarId(MappingLineNo: Integer; SourceRecordId: RecordId): Text
     begin
         exit(StrSubstNo('BAR|%1|%2', MappingLineNo, Format(SourceRecordId)));
+    end;
+
+    local procedure ApplyRuntimeFilters(var SourceRef: RecordRef; SourceTableId: Integer)
+    var
+        FilterViewText: Text;
+    begin
+        if not RuntimeFilterViews.ContainsKey(SourceTableId) then
+            exit;
+
+        FilterViewText := RuntimeFilterViews.Get(SourceTableId);
+        if FilterViewText <> '' then
+            SourceRef.SetView(FilterViewText);
+    end;
+
+    procedure CollectSourceTableIds(SetupId: Integer; ViewCode: Code[20]; var TableIds: List of [Integer])
+    var
+        MappingLine: Record "DGOG Gantt Mapping Line";
+    begin
+        Clear(TableIds);
+        MappingLine.SetRange("Setup ID", SetupId);
+        MappingLine.SetRange("View Code", ViewCode);
+        if not MappingLine.FindSet() then
+            exit;
+
+        repeat
+            if not TableIds.Contains(MappingLine."Source Table ID") then
+                TableIds.Add(MappingLine."Source Table ID");
+        until MappingLine.Next() = 0;
     end;
 }
