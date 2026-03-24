@@ -197,11 +197,10 @@ page 71891731 "DGOG Gantt Host"
         FilterPage: FilterPageBuilder;
         SourceTableIds: List of [Integer];
         TableId: Integer;
-        SourceRef: RecordRef;
         TableCaption: Text;
         FilterViewText: Text;
+        TableCaptions: List of [Text];
         FilterIndex: Integer;
-        TableRefMap: Dictionary of [Integer, Integer];
     begin
         DataBuilder.CollectSourceTableIds(Rec."ID", ActiveViewCode, SourceTableIds);
         if SourceTableIds.Count() = 0 then begin
@@ -213,19 +212,17 @@ page 71891731 "DGOG Gantt Host"
 
         FilterIndex := 0;
         foreach TableId in SourceTableIds do begin
-            SourceRef.Open(TableId);
-            TableCaption := SourceRef.Caption;
-            FilterPage.AddRecordRef(TableCaption, SourceRef);
+            FilterPage.AddTable(Format(TableId), TableId);
+            TableCaption := FilterPage.Name(Format(TableId));
+            TableCaptions.Add(TableCaption);
 
             if HasActiveFilters and ActiveFilterViews.ContainsKey(TableId) then begin
                 FilterViewText := ActiveFilterViews.Get(TableId);
                 if FilterViewText <> '' then
-                    FilterPage.SetView(TableCaption, FilterViewText);
+                    FilterPage.SetView(Format(TableId), FilterViewText);
             end;
 
-            TableRefMap.Add(TableId, FilterIndex);
             FilterIndex += 1;
-            SourceRef.Close();
         end;
 
         if not FilterPage.RunModal() then
@@ -235,10 +232,7 @@ page 71891731 "DGOG Gantt Host"
         HasActiveFilters := false;
 
         foreach TableId in SourceTableIds do begin
-            SourceRef.Open(TableId);
-            TableCaption := SourceRef.Caption;
-            FilterViewText := FilterPage.GetView(TableCaption, false);
-            SourceRef.Close();
+            FilterViewText := FilterPage.GetView(Format(TableId), false);
 
             if FilterViewText <> '' then begin
                 ActiveFilterViews.Add(TableId, FilterViewText);
