@@ -653,4 +653,32 @@ codeunit 71891733 "DGOG Gantt Data Builder"
     begin
         exit(StrSubstNo('BAR|%1|%2', MappingLineNo, Format(SourceRecordId)));
     end;
+
+    local procedure ApplyRuntimeFilters(var SourceRef: RecordRef; SourceTableId: Integer)
+    var
+        FilterViewText: Text;
+    begin
+        if not RuntimeFilterViews.ContainsKey(SourceTableId) then
+            exit;
+
+        FilterViewText := RuntimeFilterViews.Get(SourceTableId);
+        if FilterViewText <> '' then
+            SourceRef.SetView(FilterViewText);
+    end;
+
+    procedure CollectSourceTableIds(SetupId: Integer; ViewCode: Code[20]; var TableIds: List of [Integer])
+    var
+        MappingLine: Record "DGOG Gantt Mapping Line";
+    begin
+        Clear(TableIds);
+        MappingLine.SetRange("Setup ID", SetupId);
+        MappingLine.SetRange("View Code", ViewCode);
+        if not MappingLine.FindSet() then
+            exit;
+
+        repeat
+            if not TableIds.Contains(MappingLine."Source Table ID") then
+                TableIds.Add(MappingLine."Source Table ID");
+        until MappingLine.Next() = 0;
+    end;
 }
