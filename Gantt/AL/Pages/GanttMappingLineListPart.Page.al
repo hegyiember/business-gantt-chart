@@ -196,6 +196,27 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                     Page.RunModal(Page::"DGOG Gantt Mapping Rel. List", MappingRelation);
                 end;
             }
+            action(ManageFilters)
+            {
+                ApplicationArea = All;
+                Caption = 'Manage Filters';
+                Image = FilterLines;
+                ToolTip = 'Opens the saved filter presets for the current mapping line. Active filters apply automatically when the Gantt loads.';
+
+                trigger OnAction()
+                var
+                    MappingFilter: Record "DGOG Gantt Mapping Filter";
+                begin
+                    Rec.TestField("Setup ID");
+                    Rec.TestField("View Code");
+                    Rec.TestField("Line No.");
+
+                    MappingFilter.SetRange("Setup ID", Rec."Setup ID");
+                    MappingFilter.SetRange("View Code", Rec."View Code");
+                    MappingFilter.SetRange("Mapping Line No.", Rec."Line No.");
+                    Page.RunModal(Page::"DGOG Gantt Mapping Filter List", MappingFilter);
+                end;
+            }
         }
     }
 }

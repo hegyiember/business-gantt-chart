@@ -195,11 +195,12 @@ page 71891731 "DGOG Gantt Host"
     local procedure RunFilterDialog()
     var
         FilterPage: FilterPageBuilder;
+        AllObj: Record AllObjWithCaption;
         SourceTableIds: List of [Integer];
         TableId: Integer;
         TableCaption: Text;
         FilterViewText: Text;
-        TableCaptions: List of [Text];
+        TableCaptions: Dictionary of [Integer, Text];
         FilterIndex: Integer;
     begin
         DataBuilder.CollectSourceTableIds(Rec."ID", ActiveViewCode, SourceTableIds);
@@ -212,17 +213,29 @@ page 71891731 "DGOG Gantt Host"
 
         FilterIndex := 0;
         foreach TableId in SourceTableIds do begin
-            FilterPage.AddTable(Format(TableId), TableId);
-            TableCaption := FilterPage.Name(Format(TableId));
-            TableCaptions.Add(TableCaption);
+            AllObj.SetRange("Object Type", AllObj."Object Type"::Table);
+            AllObj.SetRange("Object ID", TableId);
+            if AllObj.FindFirst() then
+                TableCaption := AllObj."Object Caption"
+            else
+                TableCaption := Format(TableId);
 
-            if HasActiveFilters and ActiveFilterViews.ContainsKey(TableId) then begin
-                FilterViewText := ActiveFilterViews.Get(TableId);
-                if FilterViewText <> '' then
-                    FilterPage.SetView(Format(TableId), FilterViewText);
+            // Ensure unique caption per table (FilterPageBuilder requires unique names)
+            if TableCaptions.ContainsKey(TableId) then begin
+                FilterIndex += 1;
+                // skip duplicate table
+            end else begin
+                FilterPage.AddTable(TableCaption, TableId);
+                TableCaptions.Add(TableId, TableCaption);
+
+                if HasActiveFilters and ActiveFilterViews.ContainsKey(TableId) then begin
+                    FilterViewText := ActiveFilterViews.Get(TableId);
+                    if FilterViewText <> '' then
+                        FilterPage.SetView(TableCaption, FilterViewText);
+                end;
+
+                FilterIndex += 1;
             end;
-
-            FilterIndex += 1;
         end;
 
         if not FilterPage.RunModal() then
@@ -232,11 +245,15 @@ page 71891731 "DGOG Gantt Host"
         HasActiveFilters := false;
 
         foreach TableId in SourceTableIds do begin
-            FilterViewText := FilterPage.GetView(Format(TableId), false);
+            if TableCaptions.ContainsKey(TableId) then begin
+                TableCaption := TableCaptions.Get(TableId);
+                FilterViewText := FilterPage.GetView(TableCaption, false);
 
-            if FilterViewText <> '' then begin
-                ActiveFilterViews.Add(TableId, FilterViewText);
-                HasActiveFilters := true;
+                if FilterViewText <> '' then begin
+                    if not ActiveFilterViews.ContainsKey(TableId) then
+                        ActiveFilterViews.Add(TableId, FilterViewText);
+                    HasActiveFilters := true;
+                end;
             end;
         end;
 

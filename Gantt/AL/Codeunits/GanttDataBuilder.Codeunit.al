@@ -171,7 +171,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         EndValue: DateTime;
     begin
         SourceRef.Open(MappingLine."Source Table ID");
-        ApplyRuntimeFilters(SourceRef, MappingLine."Source Table ID");
+        ApplyRuntimeFilters(SourceRef, MappingLine."Source Table ID", MappingLine."Line No.", GanttSetup."ID", GanttView."View Code");
         if not ApplyParentFieldFilters(SourceRef, MappingLine, ParentSourceRef) then
             exit;
 
@@ -654,16 +654,26 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         exit(StrSubstNo('BAR|%1|%2', MappingLineNo, Format(SourceRecordId)));
     end;
 
-    local procedure ApplyRuntimeFilters(var SourceRef: RecordRef; SourceTableId: Integer)
+    local procedure ApplyRuntimeFilters(var SourceRef: RecordRef; SourceTableId: Integer; MappingLineNo: Integer; SetupId: Integer; ViewCode: Code[20])
     var
         FilterViewText: Text;
+        MappingFilter: Record "DGOG Gantt Mapping Filter";
     begin
-        if not RuntimeFilterViews.ContainsKey(SourceTableId) then
-            exit;
+        // 1. Start with saved (design-time) filter if active
+        MappingFilter.SetRange("Setup ID", SetupId);
+        MappingFilter.SetRange("View Code", ViewCode);
+        MappingFilter.SetRange("Mapping Line No.", MappingLineNo);
+        MappingFilter.SetRange("Is Active", true);
+        if MappingFilter.FindFirst() then
+            if MappingFilter."Filter View" <> '' then
+                SourceRef.SetView(MappingFilter."Filter View");
 
-        FilterViewText := RuntimeFilterViews.Get(SourceTableId);
-        if FilterViewText <> '' then
-            SourceRef.SetView(FilterViewText);
+        // 2. Runtime filter overrides saved filter (does not persist)
+        if RuntimeFilterViews.ContainsKey(SourceTableId) then begin
+            FilterViewText := RuntimeFilterViews.Get(SourceTableId);
+            if FilterViewText <> '' then
+                SourceRef.SetView(FilterViewText);
+        end;
     end;
 
     procedure CollectSourceTableIds(SetupId: Integer; ViewCode: Code[20]; var TableIds: List of [Integer])
