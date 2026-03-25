@@ -458,7 +458,9 @@
       this.computeVisibleRows(rows);
       this.buildDerivedCaches();
       this.computeTimeline();
+      this.computeAggregation();
       this.renderTimelineHeader();
+      this.renderAggregationPanel();
       this.renderRowsAndGrid();
       this.syncTimelineHeaderPosition();
       this.syncLabelViewport();
