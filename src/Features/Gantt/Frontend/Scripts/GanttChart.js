@@ -559,6 +559,21 @@
       this.visibleRows = [];
       this.visibleRenderRows = [];
 
+      // Sort roots by their grouping path so rows with the same groups are consecutive.
+      // This prevents duplicate group headers when the payload order doesn't match the grouping.
+      roots.sort((a, b) => {
+        const pathA = this.getGroupingPathSegments(a);
+        const pathB = this.getGroupingPathSegments(b);
+        const maxLen = Math.max(pathA.length, pathB.length);
+        for (let i = 0; i < maxLen; i++) {
+          const keyA = i < pathA.length ? this.getGroupPathKey(pathA, i) : '';
+          const keyB = i < pathB.length ? this.getGroupPathKey(pathB, i) : '';
+          if (keyA < keyB) return -1;
+          if (keyA > keyB) return 1;
+        }
+        return 0;
+      });
+
       // Only root-level rows participate in grouping.
       // Children are appended directly under their parent without additional group headers.
       let previousGroupingPath = [];
