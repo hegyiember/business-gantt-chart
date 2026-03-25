@@ -212,8 +212,14 @@ page 71891731 "DGOG Gantt Host"
 
         FilterIndex := 0;
         foreach TableId in SourceTableIds do begin
-            FilterPage.AddTable(Format(TableId), TableId);
-            TableCaption := FilterPage.Name(Format(TableId));
+            AllObj.SetRange("Object Type", AllObj."Object Type"::Table);
+            AllObj.SetRange("Object ID", TableId);
+            if AllObj.FindFirst() then
+                TableCaption := AllObj."Object Caption"
+            else
+                TableCaption := Format(TableId);
+
+            FilterPage.AddTable(TableCaption, TableId);
             TableCaptions.Add(TableCaption);
 
             if HasActiveFilters and ActiveFilterViews.ContainsKey(TableId) then begin
