@@ -1,11 +1,9 @@
 page 71891728 "DGOG Gantt View Part"
 {
     ApplicationArea = All;
-    AutoSplitKey = true;
     Caption = 'Gantt Views';
     DelayedInsert = true;
     Editable = true;
-    MultipleNewLines = true;
     PageType = ListPart;
     SourceTable = "DGOG Gantt View";
 

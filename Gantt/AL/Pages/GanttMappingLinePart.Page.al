@@ -15,16 +15,6 @@ page 71891729 "DGOG Gantt Mapping Line Part"
         {
             repeater(Lines)
             {
-                field("View Code"; Rec."View Code")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies which configured view this mapping line belongs to.';
-                }
-                field("Line No."; Rec."Line No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the unique mapping line number within the selected setup and view.';
-                }
                 field("Source Table ID"; Rec."Source Table ID")
                 {
                     ApplicationArea = All;
@@ -159,20 +149,8 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                 Caption = 'Map Grouping Fields';
                 Image = List;
                 ToolTip = 'Opens the ordered grouping-field list for the current mapping line.';
-
-                trigger OnAction()
-                var
-                    GroupingLine: Record "DGOG Gantt Grouping Line";
-                begin
-                    Rec.TestField("Setup ID");
-                    Rec.TestField("View Code");
-                    Rec.TestField("Line No.");
-
-                    GroupingLine.SetRange("Setup ID", Rec."Setup ID");
-                    GroupingLine.SetRange("View Code", Rec."View Code");
-                    GroupingLine.SetRange("Mapping Line No.", Rec."Line No.");
-                    Page.RunModal(Page::"DGOG Gantt Grouping List", GroupingLine);
-                end;
+                RunObject = Page "DGOG Gantt Grouping List";
+                RunPageLink = "Setup ID" = field("Setup ID"), "View Code" = field("View Code"), "Mapping Line No." = field("Line No.");
             }
             action(MapParentFields)
             {
@@ -180,21 +158,8 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                 Caption = 'Map Parent Fields';
                 Image = LinkAccount;
                 ToolTip = 'Opens the field-pair list that links the current line to its parent line.';
-
-                trigger OnAction()
-                var
-                    MappingRelation: Record "DGOG Gantt Mapping Relation";
-                begin
-                    Rec.TestField("Parent Line No.");
-                    Rec.TestField("Setup ID");
-                    Rec.TestField("View Code");
-                    Rec.TestField("Line No.");
-
-                    MappingRelation.SetRange("Setup ID", Rec."Setup ID");
-                    MappingRelation.SetRange("View Code", Rec."View Code");
-                    MappingRelation.SetRange("Child Line No.", Rec."Line No.");
-                    Page.RunModal(Page::"DGOG Gantt Mapping Rel. List", MappingRelation);
-                end;
+                RunObject = Page "DGOG Gantt Mapping Rel. List";
+                RunPageLink = "Setup ID" = field("Setup ID"), "View Code" = field("View Code");
             }
             action(ManageFilters)
             {
@@ -202,21 +167,21 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                 Caption = 'Manage Filters';
                 Image = FilterLines;
                 ToolTip = 'Opens the saved filter presets for the current mapping line. Active filters apply automatically when the Gantt loads.';
-
-                trigger OnAction()
-                var
-                    MappingFilter: Record "DGOG Gantt Mapping Filter";
-                begin
-                    Rec.TestField("Setup ID");
-                    Rec.TestField("View Code");
-                    Rec.TestField("Line No.");
-
-                    MappingFilter.SetRange("Setup ID", Rec."Setup ID");
-                    MappingFilter.SetRange("View Code", Rec."View Code");
-                    MappingFilter.SetRange("Mapping Line No.", Rec."Line No.");
-                    Page.RunModal(Page::"DGOG Gantt Mapping Filter List", MappingFilter);
-                end;
+                RunObject = Page "DGOG Gantt Mapping Filter List";
+                RunPageLink = "Setup ID" = field("Setup ID"), "View Code" = field("View Code"), "Mapping Line No." = field("Line No.");
             }
         }
     }
+
+    trigger OnNewRecord(BelowxRec: Boolean)
+    var
+        GrantMappingLine: Record "DGOG Gantt Mapping Line";
+    begin
+        GrantMappingLine.SetRange("Setup ID", Rec."Setup ID");
+        GrantMappingLine.SetRange("View Code", Rec."View Code");
+        if GrantMappingLine.FindLast() then
+            Rec."Line No." := GrantMappingLine."Line No." + 10000
+        else
+            Rec."Line No." := 10000;
+    end;
 }

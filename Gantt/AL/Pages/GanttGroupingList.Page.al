@@ -16,11 +16,6 @@ page 71891738 "DGOG Gantt Grouping List"
         {
             repeater(GroupingLines)
             {
-                field("Line No."; Rec."Line No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the grouping level order used at runtime.';
-                }
                 field("Group Field ID"; Rec."Group Field ID")
                 {
                     ApplicationArea = All;
@@ -37,8 +32,18 @@ page 71891738 "DGOG Gantt Grouping List"
     }
 
     trigger OnNewRecord(BelowxRec: Boolean)
+    var
+        GanttGroupingLine: Record "DGOG Gantt Grouping Line";
     begin
         if Rec."Mapping Line No." <> 0 then
             Rec.Validate("Mapping Line No.", Rec."Mapping Line No.");
+
+        GanttGroupingLine.SetRange("Setup ID", Rec."Setup ID");
+        GanttGroupingLine.SetRange("View Code", Rec."View Code");
+        GanttGroupingLine.SetRange("Mapping Line No.", Rec."Mapping Line No.");
+        if GanttGroupingLine.FindLast() then
+            Rec."Line No." := GanttGroupingLine."Line No." + 10000
+        else
+            Rec."Line No." := 10000;
     end;
 }

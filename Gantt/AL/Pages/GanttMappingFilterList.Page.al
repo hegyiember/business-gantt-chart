@@ -1,4 +1,4 @@
-page 71891740 "DGOG Gantt Mapping Filter List"
+page 71891721 "DGOG Gantt Mapping Filter List"
 {
     ApplicationArea = All;
     AutoSplitKey = true;
@@ -8,6 +8,7 @@ page 71891740 "DGOG Gantt Mapping Filter List"
     MultipleNewLines = true;
     PageType = List;
     SourceTable = "DGOG Gantt Mapping Filter";
+    UsageCategory = None;
 
     layout
     {
@@ -15,11 +16,6 @@ page 71891740 "DGOG Gantt Mapping Filter List"
         {
             repeater(Lines)
             {
-                field("Line No."; Rec."Line No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the filter entry line number.';
-                }
                 field("Name"; Rec."Name")
                 {
                     ApplicationArea = All;
@@ -71,11 +67,11 @@ page 71891740 "DGOG Gantt Mapping Filter List"
 
                 trigger OnAction()
                 var
+                    AllObj: Record AllObjWithCaption;
                     MappingLine: Record "DGOG Gantt Mapping Line";
                     FilterPage: FilterPageBuilder;
                     TableId: Integer;
                     TableCaption: Text;
-                    AllObj: Record AllObjWithCaption;
                 begin
                     if not MappingLine.Get(Rec."Setup ID", Rec."View Code", Rec."Mapping Line No.") then
                         Error('Mapping line not found.');

@@ -194,8 +194,8 @@ page 71891731 "DGOG Gantt Host"
 
     local procedure RunFilterDialog()
     var
-        FilterPage: FilterPageBuilder;
         AllObj: Record AllObjWithCaption;
+        FilterPage: FilterPageBuilder;
         SourceTableIds: List of [Integer];
         TableId: Integer;
         TableCaption: Text;
@@ -211,7 +211,6 @@ page 71891731 "DGOG Gantt Host"
 
         FilterPage.PageCaption('Gantt Data Filters');
 
-        FilterIndex := 0;
         foreach TableId in SourceTableIds do begin
             AllObj.SetRange("Object Type", AllObj."Object Type"::Table);
             AllObj.SetRange("Object ID", TableId);
@@ -221,10 +220,7 @@ page 71891731 "DGOG Gantt Host"
                 TableCaption := Format(TableId);
 
             // Ensure unique caption per table (FilterPageBuilder requires unique names)
-            if TableCaptions.ContainsKey(TableId) then begin
-                FilterIndex += 1;
-                // skip duplicate table
-            end else begin
+            if not TableCaptions.ContainsKey(TableId) then begin
                 FilterPage.AddTable(TableCaption, TableId);
                 TableCaptions.Add(TableId, TableCaption);
 
@@ -233,8 +229,6 @@ page 71891731 "DGOG Gantt Host"
                     if FilterViewText <> '' then
                         FilterPage.SetView(TableCaption, FilterViewText);
                 end;
-
-                FilterIndex += 1;
             end;
         end;
 
@@ -274,8 +268,8 @@ page 71891731 "DGOG Gantt Host"
 
     local procedure OpenSourcePage(SourceTableId: Integer; SourceRecordIdText: Text; PageId: Integer)
     var
-        OpenPageId: Integer;
         SourceRecordId: RecordId;
+        OpenPageId: Integer;
         SourceRef: RecordRef;
         RecordVariant: Variant;
     begin

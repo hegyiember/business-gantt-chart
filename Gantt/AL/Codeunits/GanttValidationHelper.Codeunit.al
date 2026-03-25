@@ -340,7 +340,7 @@ codeunit 71891732 "DGOG Gantt Validation Helper"
         if FieldId = 0 then
             exit(0);
         SourceField := SourceRef.Field(FieldId);
-        Evaluate(DecimalValue, Format(SourceField.Value, 0, 9));
+        Evaluate(DecimalValue, Format(SourceField.Value));
         exit(DecimalValue);
     end;
 

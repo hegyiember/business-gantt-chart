@@ -95,13 +95,15 @@ page 71891727 "DGOG Gantt Setup Card"
             part(MappingList; "DGOG Gantt Mapping Line Part")
             {
                 ApplicationArea = All;
-                SubPageLink = "Setup ID" = field("ID");
+                Provider = ViewList;
+                SubPageLink = "Setup ID" = field("Setup ID"), "View Code" = field("View Code");
                 UpdatePropagation = Both;
             }
             part(DetailList; "DGOG Gantt Detail Line Part")
             {
                 ApplicationArea = All;
-                SubPageLink = "Setup ID" = field("ID");
+                Provider = MappingList;
+                SubPageLink = "Setup ID" = field("Setup ID"), "View Code" = field("View Code"), "Mapping Line No." = field("Line No."), "Source Table ID" = field("Source Table ID");
                 UpdatePropagation = Both;
             }
         }

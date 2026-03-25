@@ -15,21 +15,6 @@ page 71891730 "DGOG Gantt Detail Line Part"
         {
             repeater(Details)
             {
-                field("View Code"; Rec."View Code")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies which configured view this detail line belongs to.';
-                }
-                field("Mapping Line No."; Rec."Mapping Line No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies which mapping line this detail line decorates.';
-                }
-                field("Line No."; Rec."Line No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the unique sequence identity of this detail line.';
-                }
                 field("Field ID"; Rec."Field ID")
                 {
                     ApplicationArea = All;
@@ -53,4 +38,19 @@ page 71891730 "DGOG Gantt Detail Line Part"
             }
         }
     }
+
+    trigger OnNewRecord(BelowxRec: Boolean)
+    var
+        GanttDetailLine: Record "DGOG Gantt Detail Line";
+    begin
+        GanttDetailLine.SetRange("Setup ID", Rec."Setup ID");
+        GanttDetailLine.SetRange("View Code", Rec."View Code");
+        GanttDetailLine.SetRange("Mapping Line No.", Rec."Mapping Line No.");
+        if GanttDetailLine.FindLast() then
+            Rec.Sequence := GanttDetailLine.Sequence + 10000
+        else
+            Rec.Sequence := 10000;
+
+        Rec.CalcFields("Source Table ID");
+    end;
 }
