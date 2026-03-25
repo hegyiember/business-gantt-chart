@@ -158,8 +158,6 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                 ApplicationArea = All;
                 Caption = 'Map Grouping Fields';
                 Image = List;
-                Promoted = true;
-                PromotedCategory = Process;
                 ToolTip = 'Opens the ordered grouping-field list for the current mapping line.';
 
                 trigger OnAction()
@@ -181,8 +179,6 @@ page 71891729 "DGOG Gantt Mapping Line Part"
                 ApplicationArea = All;
                 Caption = 'Map Parent Fields';
                 Image = LinkAccount;
-                Promoted = true;
-                PromotedCategory = Process;
                 ToolTip = 'Opens the field-pair list that links the current line to its parent line.';
 
                 trigger OnAction()

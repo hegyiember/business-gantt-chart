@@ -86,35 +86,23 @@ page 71891727 "DGOG Gantt Setup Card"
                     ToolTip = 'Specifies the fallback card page to open when clicking bars without a line-specific page mapping.';
                 }
             }
-            group(Views)
+            part(ViewList; "DGOG Gantt View Part")
             {
-                Caption = 'Views';
-                part(ViewList; "DGOG Gantt View Part")
-                {
-                    ApplicationArea = All;
-                    SubPageLink = "Setup ID" = field("ID");
-                    UpdatePropagation = Both;
-                }
+                ApplicationArea = All;
+                SubPageLink = "Setup ID" = field("ID");
+                UpdatePropagation = Both;
             }
-            group(Mappings)
+            part(MappingList; "DGOG Gantt Mapping Line Part")
             {
-                Caption = 'Mapping Lines';
-                part(MappingList; "DGOG Gantt Mapping Line Part")
-                {
-                    ApplicationArea = All;
-                    SubPageLink = "Setup ID" = field("ID");
-                    UpdatePropagation = Both;
-                }
+                ApplicationArea = All;
+                SubPageLink = "Setup ID" = field("ID");
+                UpdatePropagation = Both;
             }
-            group(Details)
+            part(DetailList; "DGOG Gantt Detail Line Part")
             {
-                Caption = 'Detail Lines';
-                part(DetailList; "DGOG Gantt Detail Line Part")
-                {
-                    ApplicationArea = All;
-                    SubPageLink = "Setup ID" = field("ID");
-                    UpdatePropagation = Both;
-                }
+                ApplicationArea = All;
+                SubPageLink = "Setup ID" = field("ID");
+                UpdatePropagation = Both;
             }
         }
     }
