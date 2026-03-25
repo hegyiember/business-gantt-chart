@@ -1932,6 +1932,206 @@
       this.hoverTooltip.style.top = `${Math.max(margin, top)}px`;
     }
 
+    isAggregationEnabled() {
+      const setup = this.payload?.setup || {};
+      const view = this.payload?.activeView || {};
+      return setup.enableAggregation !== false && view.aggregationEnabled === true;
+    }
+
+    computeAggregation() {
+      this.aggregationBuckets = [];
+      if (!this.isAggregationEnabled()) {
+        this.aggregationHeight = 0;
+        return;
+      }
+
+      const bars = this.payload?.bars || [];
+      const serverAggregates = this.payload?.aggregates || [];
+      const bucketMap = new Map();
+
+      // Start from server-provided aggregates
+      serverAggregates.forEach((agg) => {
+        const bStart = toDate(agg.bucketStart);
+        const bEnd = toDate(agg.bucketEnd);
+        if (!bStart || !bEnd) return;
+        const key = `${agg.resourceKey || '__all__'}|${bStart.getTime()}`;
+        bucketMap.set(key, {
+          resourceKey: agg.resourceKey || '__all__',
+          bucketStart: bStart,
+          bucketEnd: bEnd,
+          totalLoad: agg.totalLoad || 0,
+          totalCapacity: agg.totalCapacity || 0,
+          utilizationPercent: agg.utilizationPercent || 0,
+          overload: agg.overload || false
+        });
+      });
+
+      // If no server aggregates, compute client-side from bar data
+      if (!serverAggregates.length && bars.length) {
+        this.computeClientAggregation(bars, bucketMap);
+      }
+
+      this.aggregationBuckets = Array.from(bucketMap.values());
+      this.aggregationHeight = this.aggregationBuckets.length > 0 ? this.aggregationPanelHeight : 0;
+    }
+
+    computeClientAggregation(bars, bucketMap) {
+      const aggBars = bars.filter((b) => b.aggregationValue && b.aggregationValue > 0);
+      if (!aggBars.length) return;
+
+      aggBars.forEach((bar) => {
+        const barStart = toDate(bar.start);
+        const barEnd = toDate(bar.end);
+        if (!barStart || !barEnd) return;
+
+        const resourceKey = bar.resourceKey || '__all__';
+        const aggValue = bar.aggregationValue || 0;
+        const capValue = bar.capacityValue || 0;
+        const barMs = Math.max(1, barEnd.getTime() - barStart.getTime());
+        const bucketMode = String(bar.bucketMode || 'Day').toLowerCase();
+
+        let cursor = this.getAggBucketStart(barStart, bucketMode);
+        while (cursor < barEnd) {
+          const next = this.getAggBucketEnd(cursor, bucketMode);
+          const overlapStart = Math.max(cursor.getTime(), barStart.getTime());
+          const overlapEnd = Math.min(next.getTime(), barEnd.getTime());
+          const overlapMs = Math.max(0, overlapEnd - overlapStart);
+          const proportionalLoad = aggValue * (overlapMs / barMs);
+
+          const key = `${resourceKey}|${cursor.getTime()}`;
+          if (bucketMap.has(key)) {
+            const existing = bucketMap.get(key);
+            existing.totalLoad += proportionalLoad;
+            if (capValue > existing.totalCapacity) existing.totalCapacity = capValue;
+          } else {
+            bucketMap.set(key, {
+              resourceKey,
+              bucketStart: new Date(cursor.getTime()),
+              bucketEnd: new Date(next.getTime()),
+              totalLoad: proportionalLoad,
+              totalCapacity: capValue,
+              utilizationPercent: 0,
+              overload: false
+            });
+          }
+          cursor = next;
+        }
+      });
+
+      // Finalize utilization percentages
+      bucketMap.forEach((bucket) => {
+        if (bucket.totalCapacity > 0) {
+          bucket.utilizationPercent = Math.round((bucket.totalLoad / bucket.totalCapacity) * 100 * 100) / 100;
+          bucket.overload = bucket.utilizationPercent > 100;
+        }
+      });
+    }
+
+    getAggBucketStart(date, mode) {
+      switch (mode) {
+        case 'week': return startOfWeek(date);
+        case 'month': return startOfMonth(date);
+        case 'day':
+        default: return startOfDay(date);
+      }
+    }
+
+    getAggBucketEnd(bucketStart, mode) {
+      switch (mode) {
+        case 'week': return addDays(bucketStart, 7);
+        case 'month': return addMonths(bucketStart, 1);
+        case 'day':
+        default: return addDays(bucketStart, 1);
+      }
+    }
+
+    renderAggregationPanel() {
+      const panel = this.ui.aggregationPanel;
+      if (!panel) return;
+
+      if (!this.isAggregationEnabled() || !this.aggregationBuckets.length) {
+        panel.hidden = true;
+        panel.innerHTML = '';
+        return;
+      }
+
+      panel.hidden = false;
+      panel.innerHTML = '';
+      panel.style.height = `${this.aggregationPanelHeight}px`;
+      panel.style.position = 'relative';
+      panel.style.overflow = 'hidden';
+
+      const track = document.createElement('div');
+      track.className = 'lve-agg-track';
+      track.style.width = `${this.totalTimelineWidth}px`;
+      track.style.height = '100%';
+      track.style.position = 'relative';
+      track.style.willChange = 'transform';
+
+      // Find max load for scaling
+      let maxValue = 0;
+      this.aggregationBuckets.forEach((b) => {
+        maxValue = Math.max(maxValue, b.totalLoad, b.totalCapacity);
+      });
+      if (maxValue <= 0) maxValue = 1;
+
+      const barHeight = this.aggregationPanelHeight - 16; // leave room for labels
+
+      this.aggregationBuckets.forEach((bucket) => {
+        const x1 = this.dateToX(bucket.bucketStart);
+        const x2 = this.dateToX(bucket.bucketEnd);
+        const width = Math.max(2, x2 - x1 - 2);
+
+        const loadH = Math.max(1, (bucket.totalLoad / maxValue) * barHeight);
+        const capH = bucket.totalCapacity > 0 ? (bucket.totalCapacity / maxValue) * barHeight : 0;
+
+        // Capacity background bar
+        if (capH > 0) {
+          const capBar = document.createElement('div');
+          capBar.className = 'lve-agg-capacity';
+          capBar.style.position = 'absolute';
+          capBar.style.left = `${x1 + 1}px`;
+          capBar.style.bottom = '12px';
+          capBar.style.width = `${width}px`;
+          capBar.style.height = `${capH}px`;
+          track.appendChild(capBar);
+        }
+
+        // Load bar
+        const loadBar = document.createElement('div');
+        loadBar.className = `lve-agg-load${bucket.overload ? ' overload' : ''}`;
+        loadBar.style.position = 'absolute';
+        loadBar.style.left = `${x1 + 1}px`;
+        loadBar.style.bottom = '12px';
+        loadBar.style.width = `${width}px`;
+        loadBar.style.height = `${loadH}px`;
+
+        // Percentage label
+        if (width > 18 && bucket.totalCapacity > 0) {
+          const label = document.createElement('span');
+          label.className = 'lve-agg-label';
+          label.textContent = `${Math.round(bucket.utilizationPercent)}%`;
+          loadBar.appendChild(label);
+        }
+
+        track.appendChild(loadBar);
+      });
+
+      panel.appendChild(track);
+
+      // Sync scroll with main body
+      this.syncAggregationScroll();
+    }
+
+    syncAggregationScroll() {
+      const panel = this.ui.aggregationPanel;
+      if (!panel || panel.hidden) return;
+      const aggTrack = panel.querySelector('.lve-agg-track');
+      if (aggTrack) {
+        aggTrack.style.transform = `translate3d(${-this.lastScrollLeft}px, 0, 0)`;
+      }
+    }
+
     dateToX(dateObj) {
       if (!dateObj || !this.timelineCols.length) return 0;
       const time = dateObj.getTime();
