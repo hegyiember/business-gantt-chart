@@ -42,7 +42,9 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         BuildSetupJson(GanttSetup, GanttView, ContextKey, SetupJson, ActiveViewJson);
         BuildViewsJson(SetupId, ViewsJson);
         BuildMappingLinesJson(SetupId, EffectiveViewCode, MappingLinesJson);
-        BuildRuntimeArrays(GanttSetup, GanttView, RowsJson, BarsJson, DependenciesJson, AggregatesJson, RangeStart, RangeEnd);
+        BuildRuntimeArrays(GanttSetup, GanttView, RowsJson, BarsJson, DependenciesJson, RangeStart, RangeEnd);
+        if GanttSetup."Enable Aggregation" and GanttView."Aggregation Enabled" then
+            BuildAggregatesJson(GanttSetup, GanttView, AggregatesJson, RangeStart, RangeEnd);
 
         RootJson.Add('setup', SetupJson);
         RootJson.Add('activeView', ActiveViewJson);
@@ -129,7 +131,7 @@ codeunit 71891733 "DGOG Gantt Data Builder"
         until MappingLine.Next() = 0;
     end;
 
-    local procedure BuildRuntimeArrays(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var AggregatesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
+    local procedure BuildRuntimeArrays(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; var RowsJson: JsonArray; var BarsJson: JsonArray; var DependenciesJson: JsonArray; var RangeStart: DateTime; var RangeEnd: DateTime)
     var
         MappingLine: Record "DGOG Gantt Mapping Line";
         AddedDependencyIds: Dictionary of [Text, Boolean];
