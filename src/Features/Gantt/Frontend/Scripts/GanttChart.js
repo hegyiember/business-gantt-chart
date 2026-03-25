@@ -992,7 +992,9 @@
     renderRowsAndGrid() {
       this.viewportWidth = this.totalTimelineWidth;
       this.totalContentHeight = this.visibleRenderRows.length * this.rowHeight;
-      const headHeight = this.ui.timelineHead.offsetHeight || 52;
+      const aggPanelVisible = this.isAggregationEnabled() && this.aggregationBuckets.length > 0;
+      const aggH = aggPanelVisible ? this.aggregationPanelHeight : 0;
+      const headHeight = (this.ui.timelineHead.offsetHeight || 52) + aggH;
 
       this.ui.labelPane.innerHTML = '';
       this.ui.labelPane.style.display = 'flex';
@@ -2056,6 +2058,34 @@
         return;
       }
 
+      // Merge buckets across resources into time-only buckets to prevent overlap
+      const timeBuckets = new Map();
+      this.aggregationBuckets.forEach((b) => {
+        const key = b.bucketStart.getTime();
+        if (timeBuckets.has(key)) {
+          const existing = timeBuckets.get(key);
+          existing.totalLoad += b.totalLoad;
+          existing.totalCapacity += b.totalCapacity;
+        } else {
+          timeBuckets.set(key, {
+            bucketStart: b.bucketStart,
+            bucketEnd: b.bucketEnd,
+            totalLoad: b.totalLoad,
+            totalCapacity: b.totalCapacity,
+            utilizationPercent: 0,
+            overload: false
+          });
+        }
+      });
+      timeBuckets.forEach((b) => {
+        if (b.totalCapacity > 0) {
+          b.utilizationPercent = Math.round((b.totalLoad / b.totalCapacity) * 100);
+          b.overload = b.utilizationPercent > 100;
+        }
+      });
+      const mergedBuckets = Array.from(timeBuckets.values());
+      mergedBuckets.sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime());
+
       panel.hidden = false;
       panel.innerHTML = '';
       panel.style.height = `${this.aggregationPanelHeight}px`;
@@ -2069,16 +2099,16 @@
       track.style.position = 'relative';
       track.style.willChange = 'transform';
 
-      // Find max load for scaling
+      // Find max value for scaling
       let maxValue = 0;
-      this.aggregationBuckets.forEach((b) => {
+      mergedBuckets.forEach((b) => {
         maxValue = Math.max(maxValue, b.totalLoad, b.totalCapacity);
       });
       if (maxValue <= 0) maxValue = 1;
 
-      const barHeight = this.aggregationPanelHeight - 16; // leave room for labels
+      const barHeight = this.aggregationPanelHeight - 16;
 
-      this.aggregationBuckets.forEach((bucket) => {
+      mergedBuckets.forEach((bucket) => {
         const x1 = this.dateToX(bucket.bucketStart);
         const x2 = this.dateToX(bucket.bucketEnd);
         const width = Math.max(2, x2 - x1 - 2);
@@ -2119,8 +2149,6 @@
       });
 
       panel.appendChild(track);
-
-      // Sync scroll with main body
       this.syncAggregationScroll();
     }
 
