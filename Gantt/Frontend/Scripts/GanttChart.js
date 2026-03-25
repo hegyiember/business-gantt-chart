@@ -257,7 +257,10 @@
     load(payload) {
       const previousExpandedRows = new Set(this.expandedRows);
       const previousExpandedGroupRows = new Set(this.expandedStatusGroups);
-      const preserveExpandedState = !!this.payload;
+      const previousViewCode = this.payload?.activeView?.viewCode || '';
+      const newViewCode = (payload || {}).activeView?.viewCode || '';
+      const viewChanged = previousViewCode !== '' && newViewCode !== '' && previousViewCode !== newViewCode;
+      const preserveExpandedState = !!this.payload && !viewChanged;
       const previousViewState = preserveExpandedState ? this.captureViewState() : null;
 
       this.payload = payload || {};
@@ -2122,7 +2125,7 @@
           capBar.className = 'lve-agg-capacity';
           capBar.style.position = 'absolute';
           capBar.style.left = `${x1 + 1}px`;
-          capBar.style.bottom = '12px';
+          capBar.style.bottom = '4px';
           capBar.style.width = `${width}px`;
           capBar.style.height = `${capH}px`;
           track.appendChild(capBar);
@@ -2133,15 +2136,19 @@
         loadBar.className = `lve-agg-load${bucket.overload ? ' overload' : ''}`;
         loadBar.style.position = 'absolute';
         loadBar.style.left = `${x1 + 1}px`;
-        loadBar.style.bottom = '12px';
+        loadBar.style.bottom = '4px';
         loadBar.style.width = `${width}px`;
         loadBar.style.height = `${loadH}px`;
 
-        // Percentage label
-        if (width > 18 && bucket.totalCapacity > 0) {
+        // Percentage label — only show if bucket is wide enough and value is meaningful
+        if (width > 24 && bucket.totalCapacity > 0) {
+          const pct = bucket.utilizationPercent;
           const label = document.createElement('span');
           label.className = 'lve-agg-label';
-          label.textContent = `${Math.round(bucket.utilizationPercent)}%`;
+          label.textContent = pct > 9999 ? '>999%' : `${pct}%`;
+          label.style.maxWidth = `${width}px`;
+          label.style.overflow = 'hidden';
+          label.style.textOverflow = 'ellipsis';
           loadBar.appendChild(label);
         }
 
