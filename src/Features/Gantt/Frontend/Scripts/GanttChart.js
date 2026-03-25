@@ -1814,6 +1814,8 @@
 
       this.addPendingChange(bar, 'start', oldStart, bar.start);
       this.addPendingChange(bar, 'end', oldEnd, bar.end);
+      this.computeAggregation();
+      this.renderAggregationPanel();
       this.renderViewport();
       this.renderMiniMap();
       this.log('Interaction', 'info', 'Drag end', { barId: bar.barId });
