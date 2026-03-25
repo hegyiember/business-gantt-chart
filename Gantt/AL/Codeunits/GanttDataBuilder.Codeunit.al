@@ -693,4 +693,212 @@ codeunit 71891733 "DGOG Gantt Data Builder"
                 TableIds.Add(MappingLine."Source Table ID");
         until MappingLine.Next() = 0;
     end;
+
+    local procedure BuildAggregatesJson(GanttSetup: Record "DGOG Gantt Setup"; GanttView: Record "DGOG Gantt View"; var AggregatesJson: JsonArray; RangeStart: DateTime; RangeEnd: DateTime)
+    var
+        MappingLine: Record "DGOG Gantt Mapping Line";
+        SourceRef: RecordRef;
+        AggJson: JsonObject;
+        ResourceKey: Text;
+        BucketStart: DateTime;
+        BucketEnd: DateTime;
+        AggValue: Decimal;
+        CapValue: Decimal;
+        BarStart: DateTime;
+        BarEnd: DateTime;
+        BucketMode: Enum "DGOG Gantt Bucket Mode";
+        BucketCursor: Date;
+        BucketEndDate: Date;
+        RangeStartDate: Date;
+        RangeEndDate: Date;
+        ResourceBuckets: Dictionary of [Text, Decimal];
+        ResourceCapacities: Dictionary of [Text, Decimal];
+        BucketKey: Text;
+        LoadValue: Decimal;
+        CapacityValue: Decimal;
+        UtilPercent: Decimal;
+        AllBucketKeys: List of [Text];
+        BucketKeyItem: Text;
+        OverlapMs: Decimal;
+        BucketMs: Decimal;
+        BarMs: Decimal;
+        BarStartMs: Decimal;
+        BarEndMs: Decimal;
+        BucketStartMs: Decimal;
+        BucketEndMs: Decimal;
+    begin
+        if (RangeStart = 0DT) or (RangeEnd = 0DT) then
+            exit;
+
+        RangeStartDate := DT2Date(RangeStart);
+        RangeEndDate := DT2Date(RangeEnd);
+
+        MappingLine.SetRange("Setup ID", GanttSetup."ID");
+        MappingLine.SetRange("View Code", GanttView."View Code");
+        MappingLine.SetFilter("Aggregation Value Field ID", '<>0');
+        if not MappingLine.FindSet() then
+            exit;
+
+        repeat
+            BucketMode := MappingLine."Aggregation Bucket Mode";
+            SourceRef.Open(MappingLine."Source Table ID");
+            ApplyRuntimeFilters(SourceRef, MappingLine."Source Table ID", MappingLine."Line No.", GanttSetup."ID", GanttView."View Code");
+            if not ApplyParentFieldFiltersForAgg(SourceRef, MappingLine) then begin
+                SourceRef.Close();
+                // continue to next mapping line
+            end else begin
+                if SourceRef.FindSet() then
+                    repeat
+                        ResourceKey := ValidationHelper.GetFieldValueAsText(SourceRef, MappingLine."Resource Group Field ID");
+                        if ResourceKey = '' then
+                            ResourceKey := '__all__';
+                        AggValue := ValidationHelper.GetFieldDecimal(SourceRef, MappingLine."Aggregation Value Field ID");
+                        CapValue := ValidationHelper.GetFieldDecimal(SourceRef, MappingLine."Aggregation Capacity Field ID");
+                        BarStart := ValidationHelper.GetFieldDateTime(SourceRef, MappingLine."Start Date Field ID");
+                        BarEnd := ValidationHelper.GetFieldDateTime(SourceRef, MappingLine."End Date Field ID");
+                        if (BarStart <> 0DT) and (BarEnd <> 0DT) and (AggValue <> 0) then begin
+                            BarMs := BarEnd - BarStart;
+                            if BarMs <= 0 then
+                                BarMs := 1;
+
+                            BucketCursor := GetBucketStartDate(DT2Date(BarStart), BucketMode);
+                            while BucketCursor <= RangeEndDate do begin
+                                BucketEndDate := GetNextBucketDate(BucketCursor, BucketMode);
+                                BucketStartMs := CreateDateTime(BucketCursor, 0T) - CreateDateTime(20000101D, 0T);
+                                BucketEndMs := CreateDateTime(BucketEndDate, 0T) - CreateDateTime(20000101D, 0T);
+                                BarStartMs := BarStart - CreateDateTime(20000101D, 0T);
+                                BarEndMs := BarEnd - CreateDateTime(20000101D, 0T);
+
+                                if (BarEndMs > BucketStartMs) and (BarStartMs < BucketEndMs) then begin
+                                    BucketMs := BucketEndMs - BucketStartMs;
+                                    if BucketMs <= 0 then
+                                        BucketMs := 1;
+                                    OverlapMs := MinDecimal(BarEndMs, BucketEndMs) - MaxDecimal(BarStartMs, BucketStartMs);
+                                    if OverlapMs < 0 then
+                                        OverlapMs := 0;
+
+                                    BucketKey := StrSubstNo('%1|%2', ResourceKey, Format(BucketCursor));
+                                    if ResourceBuckets.ContainsKey(BucketKey) then
+                                        ResourceBuckets.Set(BucketKey, ResourceBuckets.Get(BucketKey) + (AggValue * OverlapMs / BarMs))
+                                    else
+                                        ResourceBuckets.Add(BucketKey, AggValue * OverlapMs / BarMs);
+
+                                    if CapValue > 0 then begin
+                                        if not ResourceCapacities.ContainsKey(BucketKey) then
+                                            ResourceCapacities.Add(BucketKey, CapValue)
+                                        else
+                                            if CapValue > ResourceCapacities.Get(BucketKey) then
+                                                ResourceCapacities.Set(BucketKey, CapValue);
+                                    end;
+
+                                    if not AllBucketKeys.Contains(BucketKey) then
+                                        AllBucketKeys.Add(BucketKey);
+                                end;
+
+                                BucketCursor := BucketEndDate;
+                                if BucketCursor > RangeEndDate then
+                                    break;
+                            end;
+                        end;
+                    until SourceRef.Next() = 0;
+                SourceRef.Close();
+            end;
+        until MappingLine.Next() = 0;
+
+        foreach BucketKeyItem in AllBucketKeys do begin
+            Clear(AggJson);
+            LoadValue := 0;
+            CapacityValue := 0;
+            if ResourceBuckets.ContainsKey(BucketKeyItem) then
+                LoadValue := Round(ResourceBuckets.Get(BucketKeyItem), 0.01);
+            if ResourceCapacities.ContainsKey(BucketKeyItem) then
+                CapacityValue := Round(ResourceCapacities.Get(BucketKeyItem), 0.01);
+            if CapacityValue > 0 then
+                UtilPercent := Round((LoadValue / CapacityValue) * 100, 0.01)
+            else
+                UtilPercent := 0;
+
+            AggJson.Add('resourceKey', GetResourceKeyFromBucketKey(BucketKeyItem));
+            AggJson.Add('bucketStart', Format(GetBucketDateFromKey(BucketKeyItem), 0, 9));
+            AggJson.Add('bucketEnd', Format(GetNextBucketDate(GetBucketDateFromKey(BucketKeyItem), BucketMode), 0, 9));
+            AggJson.Add('totalLoad', LoadValue);
+            AggJson.Add('totalCapacity', CapacityValue);
+            AggJson.Add('utilizationPercent', UtilPercent);
+            AggJson.Add('overload', UtilPercent > 100);
+            AggregatesJson.Add(AggJson);
+        end;
+    end;
+
+    local procedure ApplyParentFieldFiltersForAgg(var SourceRef: RecordRef; MappingLine: Record "DGOG Gantt Mapping Line"): Boolean
+    begin
+        if MappingLine."Parent Line No." = 0 then
+            exit(true);
+        exit(true);
+    end;
+
+    local procedure GetBucketStartDate(InputDate: Date; BucketMode: Enum "DGOG Gantt Bucket Mode"): Date
+    begin
+        case BucketMode of
+            BucketMode::Day:
+                exit(InputDate);
+            BucketMode::Week:
+                exit(CalcDate('<-CW>', InputDate));
+            BucketMode::Month:
+                exit(CalcDate('<-CM>', InputDate));
+        end;
+        exit(InputDate);
+    end;
+
+    local procedure GetNextBucketDate(BucketDate: Date; BucketMode: Enum "DGOG Gantt Bucket Mode"): Date
+    begin
+        case BucketMode of
+            BucketMode::Day:
+                exit(BucketDate + 1);
+            BucketMode::Week:
+                exit(CalcDate('<+1W>', BucketDate));
+            BucketMode::Month:
+                exit(CalcDate('<+1M>', BucketDate));
+        end;
+        exit(BucketDate + 1);
+    end;
+
+    local procedure GetResourceKeyFromBucketKey(BucketKey: Text): Text
+    var
+        PipePos: Integer;
+    begin
+        PipePos := StrPos(BucketKey, '|');
+        if PipePos > 0 then
+            exit(CopyStr(BucketKey, 1, PipePos - 1));
+        exit(BucketKey);
+    end;
+
+    local procedure GetBucketDateFromKey(BucketKey: Text): Date
+    var
+        PipePos: Integer;
+        DateText: Text;
+        ResultDate: Date;
+    begin
+        PipePos := StrPos(BucketKey, '|');
+        if PipePos > 0 then
+            DateText := CopyStr(BucketKey, PipePos + 1)
+        else
+            DateText := BucketKey;
+        if Evaluate(ResultDate, DateText) then
+            exit(ResultDate);
+        exit(WorkDate());
+    end;
+
+    local procedure MinDecimal(A: Decimal; B: Decimal): Decimal
+    begin
+        if A < B then
+            exit(A);
+        exit(B);
+    end;
+
+    local procedure MaxDecimal(A: Decimal; B: Decimal): Decimal
+    begin
+        if A > B then
+            exit(A);
+        exit(B);
+    end;
 }
