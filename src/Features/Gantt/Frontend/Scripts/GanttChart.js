@@ -396,6 +396,7 @@
       const scrollLeft = this.ui.scrollBody.scrollLeft;
       this.lastScrollLeft = scrollLeft;
       this.ui.timelineTrack.style.transform = `translate3d(${-scrollLeft}px, 0, 0)`;
+      this.syncAggregationScroll();
     }
 
     setBusy(caption, isBusy) {
