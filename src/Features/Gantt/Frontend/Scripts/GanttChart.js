@@ -996,9 +996,7 @@
     renderRowsAndGrid() {
       this.viewportWidth = this.totalTimelineWidth;
       this.totalContentHeight = this.visibleRenderRows.length * this.rowHeight;
-      const aggPanelVisible = this.isAggregationEnabled() && this.aggregationBuckets.length > 0;
-      const aggH = aggPanelVisible ? this.aggregationPanelHeight : 0;
-      const headHeight = (this.ui.timelineHead.offsetHeight || 52) + aggH;
+      const headHeight = (this.ui.timelineHead.offsetHeight || 52);
 
       this.ui.labelPane.innerHTML = '';
       this.ui.labelPane.style.display = 'flex';
@@ -1411,10 +1409,19 @@
 
     renderBars(startIndex, endIndex) {
       const fragment = document.createDocumentFragment();
+      const aggEnabled = this.isAggregationEnabled();
 
       for (let renderIndex = startIndex; renderIndex < endIndex; renderIndex += 1) {
         const entry = this.visibleRenderRows[renderIndex];
-        if (!entry || entry.kind !== 'data') continue;
+        if (!entry) continue;
+
+        // Render inline aggregation on group-header rows
+        if (entry.kind === 'group-header' && aggEnabled) {
+          this.renderInlineAggregation(entry.groupRowId, renderIndex, fragment);
+          continue;
+        }
+
+        if (entry.kind !== 'data') continue;
 
         const row = entry.sourceRow;
         const rowBars = this.barMapByRow.get(row.rowId) || [];
@@ -1947,6 +1954,7 @@
 
     computeAggregation() {
       this.aggregationBuckets = [];
+      this.aggregationByGroup = new Map();
       if (!this.isAggregationEnabled()) {
         this.aggregationHeight = 0;
         return;
@@ -1954,15 +1962,15 @@
 
       const bars = this.payload?.bars || [];
       const serverAggregates = this.payload?.aggregates || [];
-      const bucketMap = new Map();
+      const globalBucketMap = new Map();
 
-      // Start from server-provided aggregates
+      // Start from server-provided aggregates (global)
       serverAggregates.forEach((agg) => {
         const bStart = toDate(agg.bucketStart);
         const bEnd = toDate(agg.bucketEnd);
         if (!bStart || !bEnd) return;
         const key = `${agg.resourceKey || '__all__'}|${bStart.getTime()}`;
-        bucketMap.set(key, {
+        globalBucketMap.set(key, {
           resourceKey: agg.resourceKey || '__all__',
           bucketStart: bStart,
           bucketEnd: bEnd,
@@ -1975,11 +1983,111 @@
 
       // If no server aggregates, compute client-side from bar data
       if (!serverAggregates.length && bars.length) {
-        this.computeClientAggregation(bars, bucketMap);
+        this.computeClientAggregation(bars, globalBucketMap);
       }
 
-      this.aggregationBuckets = Array.from(bucketMap.values());
+      this.aggregationBuckets = Array.from(globalBucketMap.values());
       this.aggregationHeight = this.aggregationBuckets.length > 0 ? this.aggregationPanelHeight : 0;
+
+      // Build per-group-row aggregation by collecting descendant data rows' bars
+      this.buildPerGroupAggregation();
+    }
+
+    buildPerGroupAggregation() {
+      this.aggregationByGroup.clear();
+      if (!this.isAggregationEnabled()) return;
+
+      const bars = this.payload?.bars || [];
+      if (!bars.length) return;
+
+      // Build a map: groupRowId -> set of descendant data rowIds
+      const groupDescendants = new Map();
+      let currentGroupStack = []; // stack of { groupRowId, groupLevel }
+
+      for (let i = 0; i < this.visibleRenderRows.length; i++) {
+        const entry = this.visibleRenderRows[i];
+        if (entry.kind === 'group-header') {
+          // Pop stack to current level
+          while (currentGroupStack.length > 0 && currentGroupStack[currentGroupStack.length - 1].groupLevel >= entry.groupLevel) {
+            currentGroupStack.pop();
+          }
+          currentGroupStack.push({ groupRowId: entry.groupRowId, groupLevel: entry.groupLevel });
+          if (!groupDescendants.has(entry.groupRowId)) {
+            groupDescendants.set(entry.groupRowId, new Set());
+          }
+        } else if (entry.kind === 'data') {
+          // Add this data row to all ancestor groups in the stack
+          currentGroupStack.forEach((g) => {
+            if (!groupDescendants.has(g.groupRowId)) {
+              groupDescendants.set(g.groupRowId, new Set());
+            }
+            groupDescendants.get(g.groupRowId).add(entry.rowId);
+          });
+        }
+      }
+
+      // Also include collapsed descendants: walk ALL render rows including hidden ones
+      // For collapsed groups, we need to find data rows that WOULD be under them
+      // We already have the full row set, so also check childRowsByParent
+      const allRows = this.payload?.rows || [];
+      const allRowIds = new Set(allRows.map((r) => r.rowId));
+
+      // For each group, compute aggregation buckets from its descendant bars
+      groupDescendants.forEach((dataRowIds, groupRowId) => {
+        const groupBucketMap = new Map();
+        dataRowIds.forEach((rowId) => {
+          const rowBars = this.barMapByRow.get(rowId) || [];
+          rowBars.forEach((bar) => {
+            const barStart = toDate(bar.start);
+            const barEnd = toDate(bar.end);
+            if (!barStart || !barEnd) return;
+            const aggValue = bar.aggregationValue || 0;
+            const capValue = bar.capacityValue || 0;
+            if (aggValue <= 0) return;
+
+            const barMs = Math.max(1, barEnd.getTime() - barStart.getTime());
+            const bucketMode = String(bar.bucketMode || 'Day').toLowerCase();
+            let cursor = this.getAggBucketStart(barStart, bucketMode);
+            while (cursor < barEnd) {
+              const next = this.getAggBucketEnd(cursor, bucketMode);
+              const overlapStart = Math.max(cursor.getTime(), barStart.getTime());
+              const overlapEnd = Math.min(next.getTime(), barEnd.getTime());
+              const overlapMs = Math.max(0, overlapEnd - overlapStart);
+              const proportionalLoad = aggValue * (overlapMs / barMs);
+
+              const key = cursor.getTime();
+              if (groupBucketMap.has(key)) {
+                const existing = groupBucketMap.get(key);
+                existing.totalLoad += proportionalLoad;
+                if (capValue > existing.totalCapacity) existing.totalCapacity = capValue;
+              } else {
+                groupBucketMap.set(key, {
+                  bucketStart: new Date(cursor.getTime()),
+                  bucketEnd: new Date(next.getTime()),
+                  totalLoad: proportionalLoad,
+                  totalCapacity: capValue,
+                  utilizationPercent: 0,
+                  overload: false
+                });
+              }
+              cursor = next;
+            }
+          });
+        });
+
+        // Finalize
+        groupBucketMap.forEach((b) => {
+          if (b.totalCapacity > 0) {
+            b.utilizationPercent = Math.round((b.totalLoad / b.totalCapacity) * 100);
+            b.overload = b.utilizationPercent > 100;
+          }
+        });
+
+        if (groupBucketMap.size > 0) {
+          const sorted = Array.from(groupBucketMap.values()).sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime());
+          this.aggregationByGroup.set(groupRowId, sorted);
+        }
+      });
     }
 
     computeClientAggregation(bars, bucketMap) {
@@ -2053,66 +2161,32 @@
     }
 
     renderAggregationPanel() {
+      // Top-level aggregation panel is no longer used.
+      // Aggregation is rendered inline on group-header rows in renderBars().
       const panel = this.ui.aggregationPanel;
-      if (!panel) return;
-
-      if (!this.isAggregationEnabled() || !this.aggregationBuckets.length) {
+      if (panel) {
         panel.hidden = true;
         panel.innerHTML = '';
-        return;
       }
+    }
 
-      // Merge buckets across resources into time-only buckets to prevent overlap
-      const timeBuckets = new Map();
-      this.aggregationBuckets.forEach((b) => {
-        const key = b.bucketStart.getTime();
-        if (timeBuckets.has(key)) {
-          const existing = timeBuckets.get(key);
-          existing.totalLoad += b.totalLoad;
-          existing.totalCapacity += b.totalCapacity;
-        } else {
-          timeBuckets.set(key, {
-            bucketStart: b.bucketStart,
-            bucketEnd: b.bucketEnd,
-            totalLoad: b.totalLoad,
-            totalCapacity: b.totalCapacity,
-            utilizationPercent: 0,
-            overload: false
-          });
-        }
-      });
-      timeBuckets.forEach((b) => {
-        if (b.totalCapacity > 0) {
-          b.utilizationPercent = Math.round((b.totalLoad / b.totalCapacity) * 100);
-          b.overload = b.utilizationPercent > 100;
-        }
-      });
-      const mergedBuckets = Array.from(timeBuckets.values());
-      mergedBuckets.sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime());
+    renderInlineAggregation(groupRowId, renderIndex, fragment) {
+      const buckets = this.aggregationByGroup.get(groupRowId);
+      if (!buckets || !buckets.length) return;
 
-      panel.hidden = false;
-      panel.innerHTML = '';
-      panel.style.height = `${this.aggregationPanelHeight}px`;
-      panel.style.position = 'relative';
-      panel.style.overflow = 'hidden';
-
-      const track = document.createElement('div');
-      track.className = 'lve-agg-track';
-      track.style.width = `${this.totalTimelineWidth}px`;
-      track.style.height = '100%';
-      track.style.position = 'relative';
-      track.style.willChange = 'transform';
+      const rowTop = this.getRenderRowTop(renderIndex);
+      const inlineHeight = this.rowHeight - 4; // leave 2px top/bottom padding
 
       // Find max value for scaling
       let maxValue = 0;
-      mergedBuckets.forEach((b) => {
+      buckets.forEach((b) => {
         maxValue = Math.max(maxValue, b.totalLoad, b.totalCapacity);
       });
       if (maxValue <= 0) maxValue = 1;
 
-      const barHeight = this.aggregationPanelHeight - 16;
+      const barHeight = inlineHeight - 4;
 
-      mergedBuckets.forEach((bucket) => {
+      buckets.forEach((bucket) => {
         const x1 = this.dateToX(bucket.bucketStart);
         const x2 = this.dateToX(bucket.bucketEnd);
         const width = Math.max(2, x2 - x1 - 2);
@@ -2126,10 +2200,10 @@
           capBar.className = 'lve-agg-capacity';
           capBar.style.position = 'absolute';
           capBar.style.left = `${x1 + 1}px`;
-          capBar.style.bottom = '4px';
+          capBar.style.top = `${rowTop + inlineHeight - capH - 2}px`;
           capBar.style.width = `${width}px`;
           capBar.style.height = `${capH}px`;
-          track.appendChild(capBar);
+          fragment.appendChild(capBar);
         }
 
         // Load bar
@@ -2137,11 +2211,11 @@
         loadBar.className = `lve-agg-load${bucket.overload ? ' overload' : ''}`;
         loadBar.style.position = 'absolute';
         loadBar.style.left = `${x1 + 1}px`;
-        loadBar.style.bottom = '4px';
+        loadBar.style.top = `${rowTop + inlineHeight - loadH - 2}px`;
         loadBar.style.width = `${width}px`;
         loadBar.style.height = `${loadH}px`;
 
-        // Percentage label — only show if bucket is wide enough and value is meaningful
+        // Percentage label
         if (width > 24 && bucket.totalCapacity > 0) {
           const pct = bucket.utilizationPercent;
           const label = document.createElement('span');
@@ -2150,23 +2224,20 @@
           label.style.maxWidth = `${width}px`;
           label.style.overflow = 'hidden';
           label.style.textOverflow = 'ellipsis';
+          // Position label above the load bar
+          label.style.position = 'absolute';
+          label.style.bottom = '100%';
+          label.style.left = '50%';
+          label.style.transform = 'translateX(-50%)';
           loadBar.appendChild(label);
         }
 
-        track.appendChild(loadBar);
+        fragment.appendChild(loadBar);
       });
-
-      panel.appendChild(track);
-      this.syncAggregationScroll();
     }
 
     syncAggregationScroll() {
-      const panel = this.ui.aggregationPanel;
-      if (!panel || panel.hidden) return;
-      const aggTrack = panel.querySelector('.lve-agg-track');
-      if (aggTrack) {
-        aggTrack.style.transform = `translate3d(${-this.lastScrollLeft}px, 0, 0)`;
-      }
+      // No-op: top panel is no longer used. Inline aggregation scrolls with the grid.
     }
 
     dateToX(dateObj) {
