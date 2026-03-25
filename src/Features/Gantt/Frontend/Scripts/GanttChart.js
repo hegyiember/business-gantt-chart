@@ -110,6 +110,7 @@
       this.dependencyRenderFrame = 0;
       this.lastDependencyDebugSignature = '';
       this.aggregationBuckets = [];
+      this.aggregationByGroup = new Map();
       this.aggregationHeight = 0;
       this.aggregationPanelHeight = 80;
     }
