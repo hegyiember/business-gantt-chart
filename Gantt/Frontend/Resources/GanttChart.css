@@ -408,3 +408,54 @@
   padding: 4px 8px;
   font-size: 12px;
 }
+
+/* === Aggregation / Utilization Panel === */
+.lve-aggregation-panel {
+  border-bottom: 1px solid var(--gantt-border);
+  background: #f7f9fc;
+  overflow: hidden;
+  position: relative;
+}
+
+.lve-agg-track {
+  position: relative;
+  height: 100%;
+}
+
+.lve-agg-capacity {
+  background: rgba(45, 112, 226, 0.10);
+  border: 1px dashed rgba(45, 112, 226, 0.30);
+  border-radius: 2px 2px 0 0;
+  pointer-events: none;
+}
+
+.lve-agg-load {
+  background: rgba(45, 112, 226, 0.55);
+  border-radius: 2px 2px 0 0;
+  transition: height 0.15s ease;
+  pointer-events: none;
+  position: relative;
+}
+
+.lve-agg-load.overload {
+  background: rgba(208, 57, 57, 0.70);
+  box-shadow: inset 0 0 0 1px rgba(208, 57, 57, 0.9);
+}
+
+.lve-agg-label {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--gantt-subtext);
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 12px;
+}
+
+.lve-agg-load.overload .lve-agg-label {
+  color: #b91c1c;
+  font-weight: 700;
+}
