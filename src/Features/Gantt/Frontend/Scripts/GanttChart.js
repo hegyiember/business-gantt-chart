@@ -109,6 +109,9 @@
       this.renderFrame = 0;
       this.dependencyRenderFrame = 0;
       this.lastDependencyDebugSignature = '';
+      this.aggregationBuckets = [];
+      this.aggregationHeight = 0;
+      this.aggregationPanelHeight = 80;
     }
 
     log(category, level, message, context) {
@@ -143,6 +146,7 @@
             <div class="lve-label-pane"></div>
             <div class="lve-grid-pane">
               <div class="lve-timeline-head"></div>
+              <div class="lve-aggregation-panel" hidden></div>
               <div class="lve-scroll-body">
                 <div class="lve-grid-canvas">
                   <svg class="lve-dependency-layer"></svg>
@@ -187,6 +191,7 @@
         minimapWrap: shell.querySelector('.lve-minimap-wrap'),
         minimap: shell.querySelector('.lve-minimap'),
         minimapViewport: shell.querySelector('.lve-minimap-viewport'),
+        aggregationPanel: shell.querySelector('.lve-aggregation-panel'),
         labelHead: null,
         labelViewport: null,
         labelSurface: null,
