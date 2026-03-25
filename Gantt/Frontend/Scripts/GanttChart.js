@@ -2000,42 +2000,50 @@
       const bars = this.payload?.bars || [];
       if (!bars.length) return;
 
-      // Build a map: groupRowId -> set of descendant data rowIds
-      const groupDescendants = new Map();
-      let currentGroupStack = []; // stack of { groupRowId, groupLevel }
+      const allRows = this.payload?.rows || [];
 
+      // Step 1: Index all root rows by their grouping path key per level.
+      const groupToRootRows = new Map();
+      allRows.forEach((row) => {
+        const parentId = row.parentRowId || '';
+        if (parentId) return;
+        const groupingPath = this.getGroupingPathSegments(row);
+        if (!groupingPath.length) return;
+        for (let segIdx = 0; segIdx < groupingPath.length; segIdx++) {
+          const groupRowId = `group:${row.mappingLineNo || 0}:${this.getGroupPathKey(groupingPath, segIdx)}`;
+          if (!groupToRootRows.has(groupRowId)) groupToRootRows.set(groupRowId, new Set());
+          groupToRootRows.get(groupRowId).add(row.rowId);
+        }
+      });
+
+      // Step 2: Collect ALL descendant rowIds recursively
+      const collectAllDescendants = (rootRowId) => {
+        const result = [rootRowId];
+        const children = this.childRowsByParent.get(rootRowId) || [];
+        children.forEach((child) => {
+          result.push(...collectAllDescendants(child.rowId));
+        });
+        return result;
+      };
+
+      // Step 3: For each visible group header, compute aggregation from full subtree
+      const processedGroups = new Set();
       for (let i = 0; i < this.visibleRenderRows.length; i++) {
         const entry = this.visibleRenderRows[i];
-        if (entry.kind === 'group-header') {
-          // Pop stack to current level
-          while (currentGroupStack.length > 0 && currentGroupStack[currentGroupStack.length - 1].groupLevel >= entry.groupLevel) {
-            currentGroupStack.pop();
-          }
-          currentGroupStack.push({ groupRowId: entry.groupRowId, groupLevel: entry.groupLevel });
-          if (!groupDescendants.has(entry.groupRowId)) {
-            groupDescendants.set(entry.groupRowId, new Set());
-          }
-        } else if (entry.kind === 'data') {
-          // Add this data row to all ancestor groups in the stack
-          currentGroupStack.forEach((g) => {
-            if (!groupDescendants.has(g.groupRowId)) {
-              groupDescendants.set(g.groupRowId, new Set());
-            }
-            groupDescendants.get(g.groupRowId).add(entry.rowId);
-          });
-        }
-      }
+        if (entry.kind !== 'group-header') continue;
+        if (processedGroups.has(entry.groupRowId)) continue;
+        processedGroups.add(entry.groupRowId);
 
-      // Also include collapsed descendants: walk ALL render rows including hidden ones
-      // For collapsed groups, we need to find data rows that WOULD be under them
-      // We already have the full row set, so also check childRowsByParent
-      const allRows = this.payload?.rows || [];
-      const allRowIds = new Set(allRows.map((r) => r.rowId));
+        const rootRowIds = groupToRootRows.get(entry.groupRowId);
+        if (!rootRowIds || rootRowIds.size === 0) continue;
 
-      // For each group, compute aggregation buckets from its descendant bars
-      groupDescendants.forEach((dataRowIds, groupRowId) => {
+        const allDescendantIds = new Set();
+        rootRowIds.forEach((rootId) => {
+          collectAllDescendants(rootId).forEach((id) => allDescendantIds.add(id));
+        });
+
         const groupBucketMap = new Map();
-        dataRowIds.forEach((rowId) => {
+        allDescendantIds.forEach((rowId) => {
           const rowBars = this.barMapByRow.get(rowId) || [];
           rowBars.forEach((bar) => {
             const barStart = toDate(bar.start);
@@ -2075,7 +2083,6 @@
           });
         });
 
-        // Finalize
         groupBucketMap.forEach((b) => {
           if (b.totalCapacity > 0) {
             b.utilizationPercent = Math.round((b.totalLoad / b.totalCapacity) * 100);
@@ -2085,9 +2092,9 @@
 
         if (groupBucketMap.size > 0) {
           const sorted = Array.from(groupBucketMap.values()).sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime());
-          this.aggregationByGroup.set(groupRowId, sorted);
+          this.aggregationByGroup.set(entry.groupRowId, sorted);
         }
-      });
+      }
     }
 
     computeClientAggregation(bars, bucketMap) {
