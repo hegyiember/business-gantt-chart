@@ -2195,6 +2195,9 @@
       const labelThreshold = 30;
 
       buckets.forEach((bucket) => {
+        // Skip buckets with no meaningful load – prevents phantom bars on empty days
+        if (bucket.totalLoad <= 0.001) return;
+
         const x1 = this.dateToX(bucket.bucketStart);
         const x2 = this.dateToX(bucket.bucketEnd);
         const width = Math.max(2, x2 - x1 - 2);
@@ -2222,6 +2225,7 @@
         loadBar.style.top = `${rowTop + inlineHeight - loadH - 2}px`;
         loadBar.style.width = `${width}px`;
         loadBar.style.height = `${loadH}px`;
+        loadBar.style.pointerEvents = 'auto';
 
         // Inline label: utilization % only, shown if bucket wide enough and capacity exists
         if (width >= labelThreshold && bucket.totalCapacity > 0) {
@@ -2239,12 +2243,16 @@
           loadBar.appendChild(label);
         }
 
-        // Tooltip with detailed info
+        // Rich tooltip with detailed info
         const tooltipLoad = Math.round(bucket.totalLoad * 100) / 100;
         const tooltipCap = Math.round(bucket.totalCapacity * 100) / 100;
         const tooltipPct = bucket.totalCapacity > 0 ? Math.round(bucket.utilizationPercent) : 0;
-        loadBar.title = `Load: ${tooltipLoad}\nCapacity: ${tooltipCap}\nUtilization: ${tooltipPct}%`;
-        loadBar.style.pointerEvents = 'auto';
+        const tooltipTitle = `Utilization: ${tooltipPct}%`;
+        const tooltipFields = [
+          { caption: 'Load', value: String(tooltipLoad) },
+          { caption: 'Capacity', value: String(tooltipCap) }
+        ];
+        this.addTooltipHandlers(loadBar, tooltipTitle, tooltipFields);
 
         fragment.appendChild(loadBar);
       });
