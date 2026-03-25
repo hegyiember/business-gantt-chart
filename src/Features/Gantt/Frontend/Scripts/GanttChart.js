@@ -2175,7 +2175,7 @@
       if (!buckets || !buckets.length) return;
 
       const rowTop = this.getRenderRowTop(renderIndex);
-      const inlineHeight = this.rowHeight - 4; // leave 2px top/bottom padding
+      const inlineHeight = this.rowHeight - 4;
 
       // Find max value for scaling
       let maxValue = 0;
@@ -2185,6 +2185,7 @@
       if (maxValue <= 0) maxValue = 1;
 
       const barHeight = inlineHeight - 4;
+      const labelThreshold = 30;
 
       buckets.forEach((bucket) => {
         const x1 = this.dateToX(bucket.bucketStart);
@@ -2215,22 +2216,28 @@
         loadBar.style.width = `${width}px`;
         loadBar.style.height = `${loadH}px`;
 
-        // Percentage label
-        if (width > 24 && bucket.totalCapacity > 0) {
-          const pct = bucket.utilizationPercent;
+        // Inline label: utilization % only, shown if bucket wide enough and capacity exists
+        if (width >= labelThreshold && bucket.totalCapacity > 0) {
+          const pct = Math.min(bucket.utilizationPercent, 999);
           const label = document.createElement('span');
           label.className = 'lve-agg-label';
-          label.textContent = pct > 9999 ? '>999%' : `${pct}%`;
-          label.style.maxWidth = `${width}px`;
-          label.style.overflow = 'hidden';
-          label.style.textOverflow = 'ellipsis';
-          // Position label above the load bar
+          label.textContent = `${pct}%`;
           label.style.position = 'absolute';
           label.style.bottom = '100%';
           label.style.left = '50%';
           label.style.transform = 'translateX(-50%)';
+          label.style.maxWidth = `${width - 2}px`;
+          label.style.overflow = 'hidden';
+          label.style.textOverflow = 'ellipsis';
           loadBar.appendChild(label);
         }
+
+        // Tooltip with detailed info
+        const tooltipLoad = Math.round(bucket.totalLoad * 100) / 100;
+        const tooltipCap = Math.round(bucket.totalCapacity * 100) / 100;
+        const tooltipPct = bucket.totalCapacity > 0 ? Math.round(bucket.utilizationPercent) : 0;
+        loadBar.title = `Load: ${tooltipLoad}\nCapacity: ${tooltipCap}\nUtilization: ${tooltipPct}%`;
+        loadBar.style.pointerEvents = 'auto';
 
         fragment.appendChild(loadBar);
       });
