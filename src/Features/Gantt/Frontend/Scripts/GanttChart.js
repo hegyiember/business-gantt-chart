@@ -1414,7 +1414,9 @@
           rowLineFragment.appendChild(hLine);
         }
 
-        this.addTooltipHandlers(labelRow, row.tooltipTitle, row.tooltipFields);
+        if (entry.kind !== 'group-header') {
+          this.addTooltipHandlers(labelRow, row.tooltipTitle, row.tooltipFields);
+        }
         labelFragment.appendChild(labelRow);
       }
 
