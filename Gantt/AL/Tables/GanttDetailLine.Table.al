@@ -65,6 +65,13 @@ table 71891723 "DGOG Gantt Detail Line"
             CalcFormula = lookup("DGOG Gantt Mapping Line"."Source Table ID" where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"), "Line No." = field("Mapping Line No.")));
             ToolTip = 'Specifies the source table from the linked mapping line; used to validate the selected field ID.';
         }
+        field(10; "Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Field ID")));
+            Caption = 'Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected field.';
+        }
     }
 
     keys
