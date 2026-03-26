@@ -19,6 +19,37 @@ page 71891730 "DGOG Gantt Detail Line Part"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the source field that is shown in the tooltip.';
+
+                    trigger OnLookup(var Text: Text): Boolean
+                    var
+                        FieldRec: Record Field;
+                    begin
+                        Rec.CalcFields("Source Table ID");
+                        if Rec."Source Table ID" = 0 then
+                            exit(false);
+
+                        FieldRec.FilterGroup(2);
+                        FieldRec.SetRange(TableNo, Rec."Source Table ID");
+                        FieldRec.SetFilter(ObsoleteState, '<>%1', FieldRec.ObsoleteState::Removed);
+                        FieldRec.FilterGroup(0);
+
+                        if Rec."Field ID" <> 0 then
+                            if FieldRec.Get(Rec."Source Table ID", Rec."Field ID") then;
+
+                        if Page.RunModal(Page::"Fields Lookup", FieldRec) = Action::LookupOK then begin
+                            Rec."Field ID" := FieldRec."No.";
+                            Text := Format(Rec."Field ID");
+                            exit(true);
+                        end;
+
+                        exit(false);
+                    end;
+                }
+                field("Field Name"; Rec."Field Name")
+                {
+                    ApplicationArea = All;
+                    Editable = false;
+                    ToolTip = 'Shows the caption of the selected field.';
                 }
                 field("Caption Override"; Rec."Caption Override")
                 {

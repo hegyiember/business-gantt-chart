@@ -20,6 +20,30 @@ page 71891738 "DGOG Gantt Grouping List"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the field used for the current grouping level.';
+
+                    trigger OnLookup(var Text: Text): Boolean
+                    var
+                        FieldRec: Record Field;
+                    begin
+                        if Rec."Source Table ID" = 0 then
+                            exit(false);
+
+                        FieldRec.FilterGroup(2);
+                        FieldRec.SetRange(TableNo, Rec."Source Table ID");
+                        FieldRec.SetFilter(ObsoleteState, '<>%1', FieldRec.ObsoleteState::Removed);
+                        FieldRec.FilterGroup(0);
+
+                        if Rec."Group Field ID" <> 0 then
+                            if FieldRec.Get(Rec."Source Table ID", Rec."Group Field ID") then;
+
+                        if Page.RunModal(Page::"Fields Lookup", FieldRec) = Action::LookupOK then begin
+                            Rec."Group Field ID" := FieldRec."No.";
+                            Text := Format(Rec."Group Field ID");
+                            exit(true);
+                        end;
+
+                        exit(false);
+                    end;
                 }
                 field("Group Field Name"; Rec."Group Field Name")
                 {

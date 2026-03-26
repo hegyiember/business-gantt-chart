@@ -211,6 +211,155 @@ table 71891722 "DGOG Gantt Mapping Line"
             TableRelation = Field."No." where(TableNo = field("Source Table ID"));
             ToolTip = 'Specifies the field used as the tooltip title when hovering the row or bar.';
         }
+
+        // ── FlowField captions for all Field ID columns ──
+        field(100; "Key Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Key Field ID")));
+            Caption = 'Key Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected key field.';
+        }
+        field(101; "Description Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Description Field ID")));
+            Caption = 'Description Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected description field.';
+        }
+        field(102; "Start Date Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Start Date Field ID")));
+            Caption = 'Start Date Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected start date field.';
+        }
+        field(103; "End Date Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("End Date Field ID")));
+            Caption = 'End Date Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected end date field.';
+        }
+        field(104; "Due Date Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Due Date Field ID")));
+            Caption = 'Due Date Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected due date field.';
+        }
+        field(105; "Start Decimal Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Start Decimal Field ID")));
+            Caption = 'Start Decimal Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected start decimal field.';
+        }
+        field(106; "End Decimal Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("End Decimal Field ID")));
+            Caption = 'End Decimal Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected end decimal field.';
+        }
+        field(107; "Status Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Status Field ID")));
+            Caption = 'Status Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected status field.';
+        }
+        field(108; "Sequence Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Sequence Field ID")));
+            Caption = 'Sequence Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected sequence field.';
+        }
+        field(109; "Grouping Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Grouping Field ID")));
+            Caption = 'Grouping Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected grouping field.';
+        }
+        field(110; "Context Identity Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Context Identity Field ID")));
+            Caption = 'Context Identity Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected context identity field.';
+        }
+        field(111; "Resource Group Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Resource Group Field ID")));
+            Caption = 'Resource Group Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected resource group field.';
+        }
+        field(112; "Dep. Target Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Dependency Target Field ID")));
+            Caption = 'Dependency Target Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected dependency target field.';
+        }
+        field(113; "Dep. Order Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Dependency Order Field ID")));
+            Caption = 'Dependency Order Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected dependency order field.';
+        }
+        field(114; "Agg. Value Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Aggregation Value Field ID")));
+            Caption = 'Aggregation Value Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected aggregation value field.';
+        }
+        field(115; "Agg. Capacity Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Aggregation Capacity Field ID")));
+            Caption = 'Aggregation Capacity Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected aggregation capacity field.';
+        }
+        field(116; "Conflict Group Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Conflict Group Field ID")));
+            Caption = 'Conflict Group Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected conflict group field.';
+        }
+        field(117; "Progress Ovr. Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Progress Override Field ID")));
+            Caption = 'Progress Override Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected progress override field.';
+        }
+        field(118; "Color Override Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Color Override Field ID")));
+            Caption = 'Color Override Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected color override field.';
+        }
+        field(119; "Label Override Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Label Override Field ID")));
+            Caption = 'Label Override Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected label override field.';
+        }
+        field(120; "Tooltip Title Field Name"; Text[250])
+        {
+            CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Tooltip Title Field ID")));
+            Caption = 'Tooltip Title Field Name';
+            FieldClass = FlowField;
+            ToolTip = 'Shows the caption of the selected tooltip title field.';
+        }
     }
 
     keys
