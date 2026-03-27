@@ -140,6 +140,39 @@ page 71891727 "DGOG Gantt Setup Card"
                     Page.Run(Page::"DGOG Gantt Host", Rec);
                 end;
             }
+            action(ExportView)
+            {
+                ApplicationArea = All;
+                Caption = 'Export View to Excel';
+                Image = ExportToExcel;
+                ToolTip = 'Exports the selected view and all its mapping lines, detail lines, grouping lines, relations, and filters to an Excel file.';
+
+                trigger OnAction()
+                var
+                    GanttView: Record "DGOG Gantt View";
+                    ExcelExport: Codeunit "DGOG Gantt Excel Export";
+                begin
+                    GanttView.SetRange("Setup ID", Rec."ID");
+                    if Page.RunModal(0, GanttView) <> Action::LookupOK then
+                        exit;
+                    ExcelExport.ExportView(Rec."ID", GanttView."View Code");
+                end;
+            }
+            action(ImportView)
+            {
+                ApplicationArea = All;
+                Caption = 'Import View from Excel';
+                Image = ImportExcel;
+                ToolTip = 'Imports a view and all its child records from a previously exported Excel file into this setup.';
+
+                trigger OnAction()
+                var
+                    ExcelImport: Codeunit "DGOG Gantt Excel Import";
+                begin
+                    ExcelImport.ImportView(Rec."ID");
+                    CurrPage.Update(false);
+                end;
+            }
         }
     }
 }
