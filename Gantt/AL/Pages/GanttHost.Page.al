@@ -60,7 +60,7 @@ page 71891731 "DGOG Gantt Host"
                 ApplicationArea = All;
                 Caption = 'Set Filters';
                 Image = FilterLines;
-                ToolTip = 'Opens a filter dialog for the source tables used in the current view, similar to a report request page.';
+                ToolTip = 'Open a filter dialog that lets you apply runtime filters to the source tables used in the current view. This works similarly to a report request page — you can set filter criteria on any field of each source table. The filters are applied on top of any saved filter presets configured in the setup, and they persist for your current session only. After confirming the dialog, the Gantt reloads with the filtered data. Use this to narrow down the displayed bars without changing the setup configuration — for example, filter to a specific production order number, date range, or location code.';
 
                 trigger OnAction()
                 begin
@@ -72,7 +72,7 @@ page 71891731 "DGOG Gantt Host"
                 ApplicationArea = All;
                 Caption = 'Clear Filters';
                 Image = ClearFilter;
-                ToolTip = 'Clears all runtime filters and reloads the Gantt.';
+                ToolTip = 'Remove all runtime filters that were applied using the "Set Filters" action and reload the Gantt with the full unfiltered dataset (saved filter presets from the setup configuration still apply). Use this when you want to return to the default view after narrowing down the data. The chart reloads immediately after clearing.';
 
                 trigger OnAction()
                 begin
@@ -87,7 +87,7 @@ page 71891731 "DGOG Gantt Host"
                 ApplicationArea = All;
                 Caption = 'Reload';
                 Image = Refresh;
-                ToolTip = 'Reloads the Gantt from authoritative Business Central data and discards unsaved client-side edits.';
+                ToolTip = 'Reload the Gantt chart from the authoritative Business Central database, discarding any unsaved client-side edits (bar moves or resizes that have not been saved). Use this to refresh the chart after external changes were made to the source data by other users or processes, or to discard your own drag-and-drop changes and start fresh. Any runtime filters you have set remain active after the reload. This does not affect the setup configuration.';
 
                 trigger OnAction()
                 begin
@@ -99,7 +99,7 @@ page 71891731 "DGOG Gantt Host"
                 ApplicationArea = All;
                 Caption = 'Save Pending Changes';
                 Image = Save;
-                ToolTip = 'Asks the client control to submit all pending edits to the AL save handler.';
+                ToolTip = 'Submit all pending bar edits (moves and resizes) from the client-side chart to Business Central for permanent storage. This writes the modified start and end date values back to the original source table records. A confirmation notification appears when the save completes successfully. If no changes are pending, nothing happens. This action is only functional when both "Allow Edit" and "Allow Save" are enabled on the setup. After saving, the chart automatically reloads with the updated data to confirm the changes were applied correctly.';
 
                 trigger OnAction()
                 begin
@@ -112,7 +112,7 @@ page 71891731 "DGOG Gantt Host"
                 ApplicationArea = All;
                 Caption = 'Zoom In';
                 Image = ZoomIn;
-                ToolTip = 'Increases the client-side zoom level by one step.';
+                ToolTip = 'Increase the timeline zoom level by one step (10 percentage points). Zooming in shows more detail for shorter time spans — individual hours or days become wider, making it easier to position bars precisely and read labels on short-duration items. The maximum zoom level is 400%. The current zoom level persists for your session but resets to the setup default when you reopen the page.';
 
                 trigger OnAction()
                 begin
@@ -125,7 +125,7 @@ page 71891731 "DGOG Gantt Host"
                 ApplicationArea = All;
                 Caption = 'Zoom Out';
                 Image = ZoomOut;
-                ToolTip = 'Decreases the client-side zoom level by one step.';
+                ToolTip = 'Decrease the timeline zoom level by one step (10 percentage points). Zooming out compresses the timeline so more time is visible on screen — useful for getting a high-level overview of weeks or months at a glance. The minimum zoom level is 30%. The current zoom level persists for your session but resets to the setup default when you reopen the page.';
 
                 trigger OnAction()
                 begin
@@ -219,7 +219,6 @@ page 71891731 "DGOG Gantt Host"
             else
                 TableCaption := Format(TableId);
 
-            // Ensure unique caption per table (FilterPageBuilder requires unique names)
             if not TableCaptions.ContainsKey(TableId) then begin
                 FilterPage.AddTable(TableCaption, TableId);
                 TableCaptions.Add(TableId, TableCaption);

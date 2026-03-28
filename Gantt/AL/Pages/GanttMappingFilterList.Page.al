@@ -19,17 +19,17 @@ page 71891721 "DGOG Gantt Mapping Filter List"
                 field("Name"; Rec."Name")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the descriptive name for this filter preset.';
+                    ToolTip = 'Enter a descriptive name for this filter preset, for example "Released Orders Only" or "Location BLUE". This name helps you identify the purpose of each saved filter when you have multiple presets configured. The name is auto-populated with a default when you create a filter using the "Create / Edit Filter" action, but you can change it to anything meaningful. The name is for administrative reference only and is not shown to end users at runtime.';
                 }
                 field("Source Table ID"; Rec."Source Table ID")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the source table this filter applies to.';
+                    ToolTip = 'Shows the source table that this filter applies to, automatically inherited from the parent mapping line when the record is created. This is a read-only reference field — the source table is determined by the mapping line configuration. All filter criteria defined in the Filter View column apply to records from this table. You cannot change this value directly; it is synchronized from the mapping line.';
                 }
                 field("Is Active"; Rec."Is Active")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies whether this filter is currently active.';
+                    ToolTip = 'Toggle this to activate or deactivate this filter preset. Only one filter preset per mapping line can be active at a time — enabling this will automatically deactivate any other active filter on the same mapping line. When active, the filter criteria stored in the Filter View column are applied automatically every time the Gantt data builder loads records for this mapping line. Deactivate a filter to temporarily stop applying it without losing the saved criteria. If no filter is active, all records from the source table are loaded (subject to any runtime filters set via the Gantt host page).';
 
                     trigger OnValidate()
                     var
@@ -47,7 +47,7 @@ page 71891721 "DGOG Gantt Mapping Filter List"
                 field("Filter View"; Rec."Filter View")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the stored filter expression.';
+                    ToolTip = 'Shows the serialized filter expression that was saved using the "Create / Edit Filter" action. This is a system-generated string in Business Central''s internal filter view format — do not edit it manually unless you are familiar with the RecordRef.SetView() syntax. To modify the filter criteria, use the "Create / Edit Filter" action which opens a visual filter dialog. The stored expression is applied to the source table''s RecordRef at data build time, filtering which records appear as bars on the Gantt chart.';
                     Editable = false;
                 }
             }
@@ -63,7 +63,7 @@ page 71891721 "DGOG Gantt Mapping Filter List"
                 ApplicationArea = All;
                 Caption = 'Create / Edit Filter';
                 Image = FilterLines;
-                ToolTip = 'Opens the filter dialog for the source table to define or modify this filter preset.';
+                ToolTip = 'Open the standard Business Central filter dialog for the source table to visually define or modify the filter criteria for this preset. The dialog shows all available fields from the source table — set filter values on any combination of fields (e.g., Status = Released, Location Code = BLUE). When you confirm the dialog, the filter expression is saved to the Filter View field. If the preset has no name yet, a default name is generated based on the table caption. You can run this action multiple times to refine the criteria. The filter only takes effect at runtime when the "Is Active" flag is enabled.';
 
                 trigger OnAction()
                 var

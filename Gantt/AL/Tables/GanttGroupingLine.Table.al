@@ -12,21 +12,18 @@ table 71891737 "DGOG Gantt Grouping Line"
             Caption = 'Setup ID';
             DataClassification = CustomerContent;
             TableRelation = "DGOG Gantt Setup"."ID";
-            ToolTip = 'Specifies the setup that owns this grouping definition.';
         }
         field(2; "View Code"; Code[20])
         {
             Caption = 'View Code';
             DataClassification = CustomerContent;
             TableRelation = "DGOG Gantt View"."View Code" where("Setup ID" = field("Setup ID"));
-            ToolTip = 'Specifies the view that owns this grouping definition.';
         }
         field(3; "Mapping Line No."; Integer)
         {
             Caption = 'Mapping Line No.';
             DataClassification = CustomerContent;
             TableRelation = "DGOG Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
-            ToolTip = 'Specifies the mapping line whose source records are grouped in the chart.';
 
             trigger OnValidate()
             begin
@@ -37,28 +34,24 @@ table 71891737 "DGOG Gantt Grouping Line"
         {
             Caption = 'Line No.';
             DataClassification = CustomerContent;
-            ToolTip = 'Specifies the ordered grouping level number.';
         }
         field(5; "Source Table ID"; Integer)
         {
             Caption = 'Source Table ID';
             DataClassification = CustomerContent;
             TableRelation = AllObjWithCaption."Object ID" where("Object Type" = const(Table));
-            ToolTip = 'Specifies the source table derived from the selected mapping line.';
         }
         field(6; "Group Field ID"; Integer)
         {
             Caption = 'Group Field ID';
             DataClassification = CustomerContent;
             TableRelation = Field."No." where(TableNo = field("Source Table ID"));
-            ToolTip = 'Specifies the field used for this grouping level.';
         }
         field(7; "Group Field Name"; Text[250])
         {
             CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Source Table ID"), "No." = field("Group Field ID")));
             Caption = 'Group Field Name';
             FieldClass = FlowField;
-            ToolTip = 'Shows the caption of the selected grouping field.';
         }
     }
 
