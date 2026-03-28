@@ -12,21 +12,18 @@ table 71891735 "DGOG Gantt Mapping Relation"
             Caption = 'Setup ID';
             DataClassification = CustomerContent;
             TableRelation = "DGOG Gantt Setup"."ID";
-            ToolTip = 'Specifies the setup that owns this parent-field mapping.';
         }
         field(2; "View Code"; Code[20])
         {
             Caption = 'View Code';
             DataClassification = CustomerContent;
             TableRelation = "DGOG Gantt View"."View Code" where("Setup ID" = field("Setup ID"));
-            ToolTip = 'Specifies the view that owns this parent-field mapping.';
         }
         field(3; "Child Line No."; Integer)
         {
             Caption = 'Child Line No.';
             DataClassification = CustomerContent;
             TableRelation = "DGOG Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
-            ToolTip = 'Specifies the current mapping line that is being linked to a parent line.';
 
             trigger OnValidate()
             begin
@@ -37,56 +34,48 @@ table 71891735 "DGOG Gantt Mapping Relation"
         {
             Caption = 'Line No.';
             DataClassification = CustomerContent;
-            ToolTip = 'Specifies the unique line number of this field-pair mapping.';
         }
         field(5; "Parent Line No."; Integer)
         {
             Caption = 'Parent Line No.';
             DataClassification = CustomerContent;
             TableRelation = "DGOG Gantt Mapping Line"."Line No." where("Setup ID" = field("Setup ID"), "View Code" = field("View Code"));
-            ToolTip = 'Specifies the parent mapping line derived from the current mapping line.';
         }
         field(6; "Child Table ID"; Integer)
         {
             Caption = 'Current Table ID';
             DataClassification = CustomerContent;
             TableRelation = AllObjWithCaption."Object ID" where("Object Type" = const(Table));
-            ToolTip = 'Specifies the current line table derived from the selected child mapping line.';
         }
         field(7; "Parent Table ID"; Integer)
         {
             Caption = 'Parent Table ID';
             DataClassification = CustomerContent;
             TableRelation = AllObjWithCaption."Object ID" where("Object Type" = const(Table));
-            ToolTip = 'Specifies the parent line table derived from the selected child mapping line.';
         }
         field(8; "Child Field ID"; Integer)
         {
             Caption = 'Current Field ID';
             DataClassification = CustomerContent;
             TableRelation = Field."No." where(TableNo = field("Child Table ID"));
-            ToolTip = 'Specifies the field on the current line table used to match the parent line.';
         }
         field(9; "Child Field Name"; Text[250])
         {
             CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Child Table ID"), "No." = field("Child Field ID")));
             Caption = 'Current Field Name';
             FieldClass = FlowField;
-            ToolTip = 'Shows the caption of the selected current-line field.';
         }
         field(10; "Parent Field ID"; Integer)
         {
             Caption = 'Parent Field ID';
             DataClassification = CustomerContent;
             TableRelation = Field."No." where(TableNo = field("Parent Table ID"));
-            ToolTip = 'Specifies the field on the parent line table used to match the current line.';
         }
         field(11; "Parent Field Name"; Text[250])
         {
             CalcFormula = lookup(Field."Field Caption" where(TableNo = field("Parent Table ID"), "No." = field("Parent Field ID")));
             Caption = 'Parent Field Name';
             FieldClass = FlowField;
-            ToolTip = 'Shows the caption of the selected parent-line field.';
         }
     }
 
