@@ -19,7 +19,7 @@ page 71891738 "DGOG Gantt Grouping List"
                 field("Group Field ID"; Rec."Group Field ID")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the field used for the current grouping level.';
+                    ToolTip = 'Select the field from the source table that should be used as a grouping level in the Gantt chart. Each grouping line creates a collapsible visual section that groups bars sharing the same value in this field. For example, grouping Prod. Order Routing Lines by "Work Center No." creates one section per work center with all its routing bars nested inside. You can add multiple grouping lines to create nested groupings — the first line is the outermost group, the second is nested within it, and so on. Use the lookup button to browse available fields. Only fields from the mapping line''s source table are available.';
 
                     trigger OnLookup(var Text: Text): Boolean
                     var
@@ -49,7 +49,7 @@ page 71891738 "DGOG Gantt Grouping List"
                 {
                     ApplicationArea = All;
                     Editable = false;
-                    ToolTip = 'Shows the caption of the selected grouping field.';
+                    ToolTip = 'Displays the caption of the field selected as Group Field ID. This is a read-only calculated value that confirms which field is being used for this grouping level.';
                 }
             }
         }

@@ -20,7 +20,7 @@ page 71891736 "DGOG Gantt Mapping Rel. List"
                 {
                     ApplicationArea = All;
                     Caption = 'Current Field ID';
-                    ToolTip = 'Specifies the field on the current mapping line table used in the parent-child join.';
+                    ToolTip = 'Select the field on the current (child) mapping line''s source table that is used to match records to their parent row. This field''s value at runtime is compared against the Parent Field value — when they match, the child record is nested under that parent row in the Gantt hierarchy. For example, to link Prod. Order Routing Lines to Production Orders, select "Prod. Order No." here (the routing line field that stores the parent order number). Use the lookup to browse fields available on the current line''s source table. You can add multiple field pairs for composite key matching (e.g., both "Prod. Order No." and "Status").';
 
                     trigger OnLookup(var Text: Text): Boolean
                     var
@@ -51,13 +51,13 @@ page 71891736 "DGOG Gantt Mapping Rel. List"
                     ApplicationArea = All;
                     Caption = 'Current Field Name';
                     Editable = false;
-                    ToolTip = 'Shows the caption of the selected current-line field.';
+                    ToolTip = 'Displays the caption of the field selected as Current Field ID. This read-only value confirms which child-side field is used in the parent-child join condition.';
                 }
                 field("Parent Field ID"; Rec."Parent Field ID")
                 {
                     ApplicationArea = All;
                     Caption = 'Parent Field ID';
-                    ToolTip = 'Specifies the matching field on the parent mapping line table.';
+                    ToolTip = 'Select the corresponding field on the parent mapping line''s source table that the current field is matched against. At runtime, when the current field value equals this parent field value, the child record is placed under that parent row. For example, if the current field is "Prod. Order No." on routing lines, the parent field should be "No." on the production order table — they both store the same production order number, creating the join. Use the lookup to browse fields available on the parent line''s source table.';
 
                     trigger OnLookup(var Text: Text): Boolean
                     var
@@ -88,7 +88,7 @@ page 71891736 "DGOG Gantt Mapping Rel. List"
                     ApplicationArea = All;
                     Caption = 'Parent Field Name';
                     Editable = false;
-                    ToolTip = 'Shows the caption of the selected parent-line field.';
+                    ToolTip = 'Displays the caption of the field selected as Parent Field ID. This read-only value confirms which parent-side field is used in the parent-child join condition.';
                 }
             }
         }
